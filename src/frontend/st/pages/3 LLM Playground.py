@@ -4,6 +4,11 @@ import time
 import requests
 import streamlit as st
 
+#__________________________Header____________________________
+
+st.set_page_config(page_title="LLM Playground", page_icon="🤖")
+#____________________________________________________________
+
 # -----------------------------
 # Hilfsfunktionen
 # -----------------------------
@@ -73,7 +78,6 @@ def generate_once(base_url: str, model: str, prompt: str, timeout: float = 120.0
 # -----------------------------
 # Streamlit UI
 # -----------------------------
-st.set_page_config(page_title="Ollama Umschalter", page_icon="🤖", layout="centered")
 st.title("🤖 Ollama aus dem Container oder lokal auf dem Host nutzen")
 
 st.caption("""

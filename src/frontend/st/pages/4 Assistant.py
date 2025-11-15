@@ -4,19 +4,19 @@ from pathlib import Path
 
 if "BASE_DIR" in st.session_state:
     BASE_DIR = st.session_state["BASE_DIR"]
+    img_path_fsbar = BASE_DIR / "assets" / "finsightbar.png"
+    img_path_fsold = BASE_DIR / "assets" / "logofinsightold.png"
+    assistant_info = BASE_DIR / "assets" / "assistantinfos.txt"
 else:
     BASE_DIR = Path(__file__).resolve().parent
+    img_path_fsbar = BASE_DIR / "assets_safety" / "finsightbar.png"
+    img_path_fsold = BASE_DIR / "assets_safety" / "logofinsightold.png"
 
 
-
-# Pfad zur PNG
-img_path_fsbar = BASE_DIR / "assets" / "finsightbar.png"
-img_path_fsold = BASE_DIR / "assets" / "logofinsightold.png"
-assistant_info = BASE_DIR / "assets" / "assistantinfos.txt"
 
 #__________________________Header____________________________
 
-st.set_page_config(page_title="Digital Assistant", page_icon="🤖")
+st.set_page_config(page_title="Digital Assistant", page_icon="💬")
 #____________________________________________________________
 
 #__________________________SIDEBAR___________________________

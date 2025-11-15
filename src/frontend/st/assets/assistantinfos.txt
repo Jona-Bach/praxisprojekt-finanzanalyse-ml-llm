@@ -1,3 +1,5 @@
-This project is made up for everything. This project will save the world.
-This Project was made 3 days ago.
-You can find the settings for the Api in the Settings Section in the Welcome Menu
+This project is made up as the "praxisprojekt" for the TH-Köln. It provides a Application called "FinSight" which can analyze financial Data with Machine Learning or LLM.
+The Application is Namen "FinSight"
+You can change Settings regarding the API, DATA or Chatbot Assistant in the "Settings" Tab in the Welcome Menu.
+You can see the Data and Database on the "Data" Page
+You can work with the LLM on the "LLM Playground" Page
