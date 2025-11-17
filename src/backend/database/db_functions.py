@@ -1,9 +1,10 @@
-from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, DateTime, inspect, Date
+from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, DateTime, inspect, Date, text
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+import pandas as pd
 import os
 
 def create_av_alchemy_db(folder_name, db_name):
@@ -281,7 +282,7 @@ class AV_RAW(Base):
 
 
 class AV_PRICING(Base):
-    __tablename__ = "alphavantage__daily_pricing"
+    __tablename__ = "alphavantage_daily_pricing"
 
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -321,7 +322,7 @@ if "alphavantage_raw_kpi" not in inspector.get_table_names():
 else:
     print("✔ Tabelle existiert bereits – kein Erstellen nötig.")
 
-if "alphavantage__daily_pricing" not in inspector.get_table_names():
+if "alphavantage_daily_pricing" not in inspector.get_table_names():
     Base.metadata.create_all(engine)
     print("✔ Tabelle erstellt.")
 else:
@@ -753,3 +754,43 @@ def create_av_pricing_entry(
 
     print(f"✔ Pricing-Daten für {symbol} am {date} gespeichert.")
     return entry
+
+
+def get_table(table_name: str):
+    """
+    Lädt eine SQLAlchemy-Tabelle per Name als DataFrame.
+    Nutzt automatisch die globale engine aus deiner DB-Struktur.
+    """
+    inspector = inspect(engine)
+    
+    if table_name not in inspector.get_table_names():
+        raise ValueError(f"Tabelle '{table_name}' existiert nicht in der Datenbank.")
+
+    try:
+        query = f"SELECT * FROM {table_name}"
+        df = pd.read_sql(query, engine)
+        return df
+    except:
+        return f"{table_name} not found!"
+
+def get_table_names(database_path: str):
+    """
+    Gibt eine Liste aller Tabellen in einer SQLite-Datenbank zurück.
+    """
+    engine = create_engine(f"sqlite:///{database_path}")
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+    df = pd.DataFrame({"table_name": tables})
+    return df
+
+def delete_table(database_path: str, table_name: str):
+    """
+    Löscht eine Tabelle in der SQLite-Datenbank.
+    """
+    engine = create_engine(f"sqlite:///{database_path}")
+
+    with engine.connect() as conn:
+        conn.execute(text(f"DELETE FROM {table_name}"))
+        conn.commit()
+
+    return f"Table '{table_name}' deleted."

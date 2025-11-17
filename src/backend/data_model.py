@@ -61,14 +61,14 @@ alpha_vantage_kpis = {
 }
 
 tickers = [
-    "AAPL",   # Apple
-    "MSFT",   # Microsoft
-    "GOOGL",  # Alphabet (Google)
-    "AMZN",   # Amazon
-    "META",   # Meta Platforms
-    "TSLA",   # Tesla
-    "NVDA",   # Nvidia
-    "JPM",    # JPMorgan Chase
-    "V",      # Visa
-    "NFLX"    # Netflix
+     "AAPL",   # Apple
+ #   "MSFT",   # Microsoft
+ #   "GOOGL",  # Alphabet (Google)
+ #   "AMZN",   # Amazon
+ #   "META",   # Meta Platforms
+ #   "TSLA",   # Tesla
+ #   "NVDA",   # Nvidia
+ #   "JPM",    # JPMorgan Chase
+ #   "V",      # Visa
+ #   "NFLX"    # Netflix
 ]

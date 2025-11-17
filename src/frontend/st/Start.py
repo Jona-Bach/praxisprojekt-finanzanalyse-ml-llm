@@ -2,6 +2,7 @@ import streamlit as st
 from pathlib import Path
 import requests
 import pandas as pd
+from backend.database.db_functions import get_table_names, delete_table
 
 
 # Ordner der aktuellen Datei (z.B. app.py)
@@ -49,6 +50,50 @@ with tab1:
 
 
 with tab3:
+    with st.expander("Data Settings"):
+        st.header("Data Settings:")
+        with st.expander("Clear Table"):
+            database_path = "data/alphavantage.db"   # <--- anpassen falls nötig
+            # Session-State für Reload
+            if "reload_tables" not in st.session_state:
+                st.session_state.reload_tables = True
+            # Tabellen laden
+            if st.session_state.reload_tables:
+                df_tables = get_table_names(database_path)
+                st.session_state.tables = df_tables["table_name"].tolist()
+                st.session_state.reload_tables = False
+
+            tables = st.session_state.tables
+
+            # Kein Ergebnis?
+            if len(tables) == 0:
+                st.info("No table found")
+                st.stop()
+
+            # Tabelle auswählen
+            choice = st.selectbox("Choose table to clear:", tables)
+
+            @st.dialog("⚠️ Required!")
+            def confirm_delete(table_name: str):
+                st.error(f"Are you sure you want to clear **{table_name}**?")
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    if st.button("Yes, clear", type="primary"):
+                        msg = delete_table(database_path, table_name)
+                        st.success(msg)
+                        st.session_state["_refresh"] = True
+                        st.rerun()
+
+                with col2:
+                    if st.button("Cancel"):
+                        st.info("Cancelled")
+                        st.rerun()
+
+            if st.button("Clear Table"):
+                confirm_delete(choice)
+
     with st.expander("Assistant Settings"):
         st.header("Assistant Settings:")
 
