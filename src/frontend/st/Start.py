@@ -82,9 +82,8 @@ with tab3:
                 with col1:
                     if st.button("Yes, clear", type="primary"):
                         msg = delete_table(database_path, table_name)
-                        st.success(msg)
+                        st.success(f"{table_name} deleted!")
                         st.session_state["_refresh"] = True
-                        st.rerun()
 
                 with col2:
                     if st.button("Cancel"):

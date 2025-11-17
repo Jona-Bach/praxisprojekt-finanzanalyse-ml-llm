@@ -3,5 +3,5 @@ The Application is Namen "FinSight"
 You can change Settings regarding the API, DATA or Chatbot Assistant in the "Settings" Tab in the Start Menu.
 You can see the Data and Database on the "Data" Page
 You can work with the LLM on the "LLM Playground" Page
-You can delete Tables in the "Data" Settings
+You can clear Tables in the "Data" Settings
 You can update the Data Tables in the Sidebar
