@@ -2,20 +2,25 @@ import time
 from datetime import datetime
 from src.backend.api_services.av_connect import fetch_alphavantage_raw, fetch_alphavantage_price_today
 from src.backend.data_model import tickers
+import streamlit as st
 
 
 def load_data():
-    today = datetime.today
+    status_raw_data = st.empty()
+    status_pricing_data = st.empty()
+    today = datetime.today()
     print(f"Loading data at: {today} ")
 
     for ticker in tickers:
         try:
             #fetch_alphavantage_raw(ticker)
+            status_raw_data.write(f"Fetched Raw Data for: {ticker}")
             #fetch_alphavantage_price_today(ticker)
+            status_pricing_data.write(f"Fetched Pricing Data for: {ticker}")
             print(f"{ticker} added to Database!")
         except Exception as e:
             print(f"Error: {e}")
 
-        time.sleep(60)
+        time.sleep(1)
     
-    return f"Loaded data at: {today}"
+    return f"Updated data at: {today}"

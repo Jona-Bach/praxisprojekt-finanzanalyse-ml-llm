@@ -18,6 +18,6 @@ st.sidebar.divider()
 #____________________________________________________________
 
 if st.button("Load Data"):
-    with st.spinner("Loading data (this might take a while...)"):
+    with st.spinner("Updating data (this might take a while...)"):
         answer = load_data()
     st.success(answer)
