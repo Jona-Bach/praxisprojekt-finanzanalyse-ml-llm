@@ -2,9 +2,13 @@ import streamlit as st
 from pathlib import Path
 import requests
 import pandas as pd
-from backend.database.db_functions import get_table_names, delete_table, add_system_config, get_config_dict, delete_system_config
+from backend.database.db_functions import get_table_names, delete_table, add_system_config, get_config_dict, delete_system_config, update_system_config
 from backend.llm_functions import check_connection
 
+#__________________________Header____________________________
+
+st.set_page_config(page_title="Start", page_icon="⚙️")
+#____________________________________________________________
 
 # Ordner der aktuellen Datei (z.B. app.py)
 BASE_DIR = Path(__file__).resolve().parent
@@ -15,16 +19,7 @@ st.session_state["BASE_DIR"] = BASE_DIR
 img_path_fsbar = BASE_DIR / "assets" / "finsightbar.png"
 img_path_fsold = BASE_DIR / "assets" / "logofinsightold.png"
 
-custom_url = None
-
-
-
-
-
-#__________________________Header____________________________
-
-st.set_page_config(page_title="Start", page_icon="⚙️")
-#____________________________________________________________
+add_system_config("toggle_button", "test", False)
 
 #__________________________SIDEBAR___________________________
 st.sidebar.subheader("Welcome to FinSight!")
@@ -33,11 +28,10 @@ st.sidebar.divider()
 #____________________________________________________________
 
 
+
 #__________________________PAGE______________________________
 tab1, tab2, tab3 = st.tabs(["Welcome", "Setup", "Settings"])
 st.title("")
-
-
 
 
 #__________________________Welcome______________________________
@@ -48,18 +42,24 @@ with tab1:
     st.divider()
 
 
+ 
+
+
+
 #__________________________Settings______________________________
 
 
 with tab3:
     with st.expander("Global Settings"):
         st.header("Global Settings:")
-        local_ollama_choice = st.toggle(
+        toggle_cfg = get_config_dict("toggle_button")
+
+        local_ollama_choice_toggle = st.toggle(
             "Local Ollama",
-            key="use_local_ollama",
-            value=st.session_state.get("use_local_ollama", False)
+            value=toggle_cfg["Tag"]
         )
-        if st.session_state["use_local_ollama"]:
+        if local_ollama_choice_toggle:
+            update_system_config(name="toggle_button",tag=True)
             custom_url = st.text_input("Local Ollama (standard: http://localhost:11434", value="http://localhost:11434")
             st.caption("")
             status, message = check_connection(custom_url) 
@@ -81,6 +81,7 @@ with tab3:
                     st.error(e)
         else:
             st.write("Local Ollama not used!")
+            update_system_config(name="toggle_button",tag=False)
         if st.button("Reset Ollama Config!"):
                 try:
                     delete_system_config("LocalOllamaURL")
@@ -187,7 +188,7 @@ with tab3:
                     except Exception as e:
                         st.error(e)
 
-        elif custom_url is not None and st.session_state["assistant_base_url"] == custom_url:
+        elif toggle_cfg["Tag"] == True:
             pass
 
         else:

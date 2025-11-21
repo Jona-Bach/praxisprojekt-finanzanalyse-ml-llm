@@ -850,3 +850,29 @@ def delete_system_config(name: str):
     
     session_2.commit()
     return True
+
+def update_system_config(name: str, value: str = None, tag: bool = None):
+    # Eintrag suchen
+    entry = get_system_config_by_name(name)
+    
+    if not entry:
+        return None  # oder False, je nach Geschmack
+    
+    # Nur Felder ändern, die übergeben wurden
+    if value is not None:
+        entry.Value = value
+    
+    if tag is not None:
+        entry.Tag = tag
+    
+    # Änderungen speichern
+    session_2.commit()
+    session_2.refresh(entry)
+    
+    # Im gleichen Format wie get_config_dict zurückgeben
+    return {
+        "id": entry.id,
+        "Name": entry.Name,
+        "Value": entry.Value,
+        "Tag": entry.Tag
+    }
