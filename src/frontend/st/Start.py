@@ -2,7 +2,7 @@ import streamlit as st
 from pathlib import Path
 import requests
 import pandas as pd
-from backend.database.db_functions import get_table_names, delete_table, add_system_config, get_config_dict
+from backend.database.db_functions import get_table_names, delete_table, add_system_config, get_config_dict, delete_system_config
 from backend.llm_functions import check_connection
 
 
@@ -15,6 +15,7 @@ st.session_state["BASE_DIR"] = BASE_DIR
 img_path_fsbar = BASE_DIR / "assets" / "finsightbar.png"
 img_path_fsold = BASE_DIR / "assets" / "logofinsightold.png"
 
+custom_url = None
 
 
 
@@ -53,23 +54,41 @@ with tab1:
 with tab3:
     with st.expander("Global Settings"):
         st.header("Global Settings:")
-        local_ollama_choice = st.toggle("Local Ollama", value=False)
-        if local_ollama_choice:
+        local_ollama_choice = st.toggle(
+            "Local Ollama",
+            key="use_local_ollama",
+            value=st.session_state.get("use_local_ollama", False)
+        )
+        if st.session_state["use_local_ollama"]:
             custom_url = st.text_input("Local Ollama (standard: http://localhost:11434", value="http://localhost:11434")
             st.caption("")
             status, message = check_connection(custom_url) 
             if status == True:
                 st.success(message)
+                st.session_state["assistant_base_url"] = custom_url
             if status == False:
                 st.error(message)
             if st.button("Set Local Ollama as standard!"):
                 try:
-                    add_system_config(name="LocalOllamaURL", value= custom_url, tag=True)
-                    st.success(f"Set {custom_url} as standard!")
+                    ollama_standard_cfg = get_config_dict("LocalOllamaURL")
+                    if ollama_standard_cfg is not None:
+                        if ollama_standard_cfg["Tag"] == True and ollama_standard_cfg["Name"] == "LocalOllamaURL":
+                            st.error("Local Ollama already set to standard!")
+                    else:
+                        add_system_config(name="LocalOllamaURL", value= custom_url, tag=True)
+                        st.success(f"Set {custom_url} as standard!")
                 except Exception as e:
                     st.error(e)
         else:
             st.write("Local Ollama not used!")
+        if st.button("Reset Ollama Config!"):
+                try:
+                    delete_system_config("LocalOllamaURL")
+                    st.info("Standard Ollama Config was deleted!")
+                    ollama_config_dic = None
+                except Exception as e:
+                    st.error(e)
+
 
 
 
@@ -130,10 +149,8 @@ with tab3:
 
         # 1. Default nur EINMAL setzen
         ollama_config_dic = get_config_dict("LocalOllamaURL")
-        if ollama_config_dic["Tag"] == True:
+        if ollama_config_dic is not None and ollama_config_dic["Tag"] == True:
             st.session_state["assistant_base_url"] = ollama_config_dic["Value"]
-            st.write(st.session_state["assistant_base_url"])
-
         if "assistant_base_url" not in st.session_state:
             st.session_state["assistant_base_url"] = "http://host.docker.internal:11434"
 
@@ -160,7 +177,22 @@ with tab3:
         )
 
         # 4. Auswahl ins session_state schreiben
-        st.session_state["assistant_base_url"] = url_map[assistant_llm_choice]
+        if ollama_config_dic is not None:
+            if st.session_state["assistant_base_url"] == ollama_config_dic["Value"]:
+                if st.button("Reset Local Ollama Config"):
+                    try:
+                        delete_system_config("LocalOllamaURL")
+                        st.info("Standard Ollama Config was deleted!")
+                        ollama_config_dic = None
+                    except Exception as e:
+                        st.error(e)
+
+        elif custom_url is not None and st.session_state["assistant_base_url"] == custom_url:
+            pass
+
+        else:
+            
+            st.session_state["assistant_base_url"] = url_map[assistant_llm_choice]
 
         st.info(f"Current LLM Source: {st.session_state['assistant_base_url']}")
 

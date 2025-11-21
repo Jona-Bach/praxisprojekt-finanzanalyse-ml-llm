@@ -838,3 +838,15 @@ def get_config_dict(name: str):
         "Value": entry.Value,
         "Tag": entry.Tag
     }
+
+def delete_system_config(name: str):
+    entries = session_2.query(System_Config).filter(System_Config.Name == name).all()
+    
+    if not entries:
+        return False  # nichts gefunden
+    
+    for entry in entries:
+        session_2.delete(entry)
+    
+    session_2.commit()
+    return True

@@ -61,6 +61,7 @@ if "assistant_base_url" in st.session_state:
     base_url = st.session_state["assistant_base_url"]
 else:
      base_url = "http://host.docker.internal:11434"
+     # base_url = "http://localhost:11434" Vielleicht ändern wenn man Container nicht nutzt
 ok, msg = check_connection(base_url)
 if ok:
     st.success(msg)
