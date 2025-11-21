@@ -2,7 +2,8 @@ import streamlit as st
 from pathlib import Path
 import requests
 import pandas as pd
-from backend.database.db_functions import get_table_names, delete_table
+from backend.database.db_functions import get_table_names, delete_table, add_system_config, get_config_dict
+from backend.llm_functions import check_connection
 
 
 # Ordner der aktuellen Datei (z.B. app.py)
@@ -50,6 +51,37 @@ with tab1:
 
 
 with tab3:
+    with st.expander("Global Settings"):
+        st.header("Global Settings:")
+        local_ollama_choice = st.toggle("Local Ollama", value=False)
+        if local_ollama_choice:
+            custom_url = st.text_input("Local Ollama (standard: http://localhost:11434", value="http://localhost:11434")
+            st.caption("")
+            status, message = check_connection(custom_url) 
+            if status == True:
+                st.success(message)
+            if status == False:
+                st.error(message)
+            if st.button("Set Local Ollama as standard!"):
+                try:
+                    add_system_config(name="LocalOllamaURL", value= custom_url, tag=True)
+                    st.success(f"Set {custom_url} as standard!")
+                except Exception as e:
+                    st.error(e)
+        else:
+            st.write("Local Ollama not used!")
+
+
+
+
+
+
+
+
+
+
+
+
     with st.expander("Data Settings"):
         st.header("Data Settings:")
         with st.expander("Clear Table"):
@@ -97,6 +129,11 @@ with tab3:
         st.header("Assistant Settings:")
 
         # 1. Default nur EINMAL setzen
+        ollama_config_dic = get_config_dict("LocalOllamaURL")
+        if ollama_config_dic["Tag"] == True:
+            st.session_state["assistant_base_url"] = ollama_config_dic["Value"]
+            st.write(st.session_state["assistant_base_url"])
+
         if "assistant_base_url" not in st.session_state:
             st.session_state["assistant_base_url"] = "http://host.docker.internal:11434"
 

@@ -283,7 +283,7 @@ class AV_RAW(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
 class System_Config(Base_2):
-    __tablename__ = "assistant_config"
+    __tablename__ = "global_config"
     id = Column(Integer, primary_key=True, autoincrement=True)
     Name = Column(String, nullable=False)
     Value = Column(String)
@@ -811,3 +811,30 @@ def delete_table(database_path: str, table_name: str):
         conn.commit()
 
     return f"Table '{table_name}' deleted."
+
+from sqlalchemy.orm import Session
+
+def add_system_config(name: str, value: str = None, tag: bool = False):
+    new_entry = System_Config(
+        Name=name,
+        Value=value,
+        Tag=tag
+    )
+    session_2.add(new_entry)
+    session_2.commit()
+    session_2.refresh(new_entry)
+    return new_entry
+
+def get_system_config_by_name(name: str):
+    return session_2.query(System_Config).filter(System_Config.Name == name).first()
+
+def get_config_dict(name: str):
+    entry = get_system_config_by_name(name)
+    if not entry:
+        return None
+    return {
+        "id": entry.id,
+        "Name": entry.Name,
+        "Value": entry.Value,
+        "Tag": entry.Tag
+    }
