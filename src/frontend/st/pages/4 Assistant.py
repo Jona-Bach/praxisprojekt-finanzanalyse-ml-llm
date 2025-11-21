@@ -73,7 +73,7 @@ If you don't have a connection, you can go to the settings and change the connec
 otherwise please reread the "Setup" Guide in the Start Menu! You can also change your Model in the settings. Larger models will give better output but will take longer to respond!
 """)
 
-st.caption(f"Current model: {model}. (You can change this in the settings)")
+st.write(f"Current model: {model}. (You can change this in the settings)")
 st.divider()
 
 
