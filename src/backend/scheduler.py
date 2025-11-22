@@ -3,6 +3,7 @@ from datetime import datetime
 from src.backend.api_services.av_connect import fetch_alphavantage_raw, fetch_alphavantage_price_today
 from src.backend.data_model import initial_tickers, TICKERS
 from backend.database.db_functions import get_list_system_config
+from backend.data_processing.alphavantage_processed import process_alphavantage_raw_db
 import streamlit as st
 now = datetime.now().replace(microsecond=0)
 
@@ -13,7 +14,7 @@ def load_data(data: list):
     status_pricing_data = st.empty()
     today = datetime.today()
     print(f"Downloading data at: {today} ")
-    status_raw_data.write("Downloading...")
+    #status_raw_data.write("Downloading...")
 
     for ticker in data:
         try:
@@ -36,7 +37,7 @@ def load_initial_data():
     status_pricing_data = st.empty()
     today = datetime.today()
     print(f"Loading data at: {today} ")
-    status_raw_data.write("Loading...")
+    #status_raw_data.write("Loading...")
 
     new_custom_ticker = get_list_system_config("Custom_Initial_Tickers")
     if new_custom_ticker is not None:
