@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, DateTime, inspect, Date, text, Boolean
+from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, DateTime, inspect, Date, text, Boolean, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -349,6 +349,48 @@ class YF_PRICE_HISTORY(Base_yf):
 
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
+class YF_COMPANY_INFO(Base_yf):
+    __tablename__ = "yf_company_info"
+
+    # Primary key
+    symbol = Column(String, primary_key=True)
+
+    # Company identity
+    longName = Column(String)
+    shortName = Column(String)
+    sector = Column(String)
+    industry = Column(String)
+    longBusinessSummary = Column(Text)
+
+    # Location & contact
+    address1 = Column(String)
+    city = Column(String)
+    state = Column(String)
+    zip = Column(String)
+    country = Column(String)
+    website = Column(String)
+    irWebsite = Column(String)
+    phone = Column(String)
+
+    # Company structure
+    fullTimeEmployees = Column(Integer)
+    companyOfficers = Column(JSON)   # nested list => JSON column
+
+    # Governance / risk
+    overallRisk = Column(Integer)
+    auditRisk = Column(Integer)
+    boardRisk = Column(Integer)
+    compensationRisk = Column(Integer)
+    shareHolderRightsRisk = Column(Integer)
+
+    # Meta
+    exchange = Column(String)
+    fullExchangeName = Column(String)
+    region = Column(String)
+    language = Column(String)
+
+    # Auto timestamp
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
 
 # -------------------------------------------------
@@ -897,6 +939,121 @@ def create_yf_price_history_entry(
     print(f"✔ YF Pricing-Daten gespeichert: {symbol} am {date}")
     return entry
 
+def create_yf_company_information_entry(
+    symbol: str,
+
+    longName: str = None,
+    shortName: str = None,
+    sector: str = None,
+    industry: str = None,
+    longBusinessSummary: str = None,
+
+    address1: str = None,
+    city: str = None,
+    state: str = None,
+    zip: str = None,
+    country: str = None,
+    website: str = None,
+    irWebsite: str = None,
+    phone: str = None,
+
+    fullTimeEmployees: int = None,
+    companyOfficers: dict | list | None = None,
+
+    overallRisk: int = None,
+    auditRisk: int = None,
+    boardRisk: int = None,
+    compensationRisk: int = None,
+    shareHolderRightsRisk: int = None,
+
+    exchange: str = None,
+    fullExchangeName: str = None,
+    region: str = None,
+    language: str = None,
+):
+    """
+    Erstellt oder speichert einen Unternehmens-Info-Eintrag
+    (Tabelle: yf_company_info)
+    """
+
+    entry = YF_COMPANY_INFO(
+        symbol=symbol,
+
+        longName=longName,
+        shortName=shortName,
+        sector=sector,
+        industry=industry,
+        longBusinessSummary=longBusinessSummary,
+
+        address1=address1,
+        city=city,
+        state=state,
+        zip=zip,
+        country=country,
+        website=website,
+        irWebsite=irWebsite,
+        phone=phone,
+
+        fullTimeEmployees=fullTimeEmployees,
+        companyOfficers=companyOfficers,
+
+        overallRisk=overallRisk,
+        auditRisk=auditRisk,
+        boardRisk=boardRisk,
+        compensationRisk=compensationRisk,
+        shareHolderRightsRisk=shareHolderRightsRisk,
+
+        exchange=exchange,
+        fullExchangeName=fullExchangeName,
+        region=region,
+        language=language,
+    )
+
+    try:
+        session_yf.add(entry)
+        session_yf.commit()
+    except IntegrityError as e:
+        session_yf.rollback()
+        print(f"⚠️  Eintrag existiert bereits oder Fehler bei {symbol}: {e}")
+        return None
+
+    print(f"✔ Unternehmensdaten gespeichert: {symbol}")
+    return entry
+
+def create_yf_company_from_info(info: dict):
+
+    return create_yf_company_information_entry(
+        symbol              = info.get("symbol"),
+        longName            = info.get("longName"),
+        shortName           = info.get("shortName"),
+        sector              = info.get("sector"),
+        industry            = info.get("industry"),
+        longBusinessSummary = info.get("longBusinessSummary"),
+
+        address1 = info.get("address1"),
+        city     = info.get("city"),
+        state    = info.get("state"),
+        zip      = info.get("zip"),
+        country  = info.get("country"),
+        website  = info.get("website"),
+        irWebsite= info.get("irWebsite"),
+        phone    = info.get("phone"),
+
+        fullTimeEmployees = info.get("fullTimeEmployees"),
+        companyOfficers   = info.get("companyOfficers"),
+
+        overallRisk            = info.get("overallRisk"),
+        auditRisk              = info.get("auditRisk"),
+        boardRisk              = info.get("boardRisk"),
+        compensationRisk       = info.get("compensationRisk"),
+        shareHolderRightsRisk  = info.get("shareHolderRightsRisk"),
+
+        exchange           = info.get("exchange"),
+        fullExchangeName   = info.get("fullExchangeName"),
+        region             = info.get("region"),
+        language           = info.get("language"),
+    )
+
 def get_table(table_name: str):
     """
     Lädt eine SQLAlchemy-Tabelle per Name als DataFrame.
@@ -1169,25 +1326,27 @@ def remove_from_list_system_config(name: str, items):
     # Liste updaten
     return update_list_system_config(name, updated)
 
-
-def get_yf_symbols_from_table(database_path: str, table_name: str):
+def get_yf_company_info(symbol: str):
     """
-    Holt alle eindeutigen Symbole ('symbol') aus einer Tabelle.
-    Gibt IMMER eine Liste zurück – auch wenn die Tabelle leer ist.
+    Lädt die Unternehmensinformationen aus der Tabelle YF_COMPANY_INFO
+    und gibt sie als Pandas DataFrame zurück.
     """
-    engine_yf = create_engine(f"sqlite:///{database_path}")
-    inspector_yf = inspect(engine_yf)
 
-    # Existiert die Tabelle überhaupt?
-    if table_name not in inspector_yf.get_table_names():
-        return []
+    # SQLAlchemy-Query
+    result = (
+        session_yf.query(YF_COMPANY_INFO)
+        .filter(YF_COMPANY_INFO.symbol == symbol)
+        .first()
+    )
 
-    try:
-        df = pd.read_sql(f"SELECT symbol FROM {table_name}", engine_yf)
-    except Exception:
-        return []
+    if result is None:
+        print(f"⚠️ Kein Eintrag für Symbol {symbol} gefunden.")
+        return pd.DataFrame()   # leeres DF zurück
 
-    if "symbol" not in df.columns:
-        return []
-    
-    return df["symbol"].dropna().unique().tolist()
+    # SQLAlchemy-Objekt in Dict umwandeln
+    data = {c.name: getattr(result, c.name) for c in result.__table__.columns}
+
+    # DataFrame mit genau einer Zeile
+    df = pd.DataFrame([data])
+
+    return df

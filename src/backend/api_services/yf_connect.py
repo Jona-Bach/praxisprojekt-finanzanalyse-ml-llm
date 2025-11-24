@@ -1,7 +1,9 @@
 import yfinance as yf
+import random
 import pandas as pd
 import time
-from backend.database.db_functions import create_yf_pricing_entry, create_yf_price_history_entry
+from sqlalchemy.exc import IntegrityError
+from backend.database.db_functions import create_yf_pricing_entry, create_yf_price_history_entry, create_yf_company_from_info
 from backend.data_model import TICKERS
 
 stock_list = TICKERS
@@ -162,4 +164,63 @@ def download_price_history(
 
     print("\n🎉 Fertig! Alle Batches geladen und in DB gespeichert.\n")
 
-download_price_history(tickers_to_download=stock_list)
+def download_yf_company_info(
+    tickers: list,
+    base_sleep: float = 5.0,      # Grundwartezeit (vorsichtig)
+    jitter: float = 2.0,          # Zusatz durch zufällige Variation
+    max_retries: int = 2          # Anzahl Wiederholungsversuche
+):
+    """
+    Lädt vorsichtig die Unternehmensinformationen (ticker.info)
+    für alle Ticker in der Liste und speichert sie in der DB.
+
+    Speichert über: create_yf_company_from_info(info)
+    """
+
+    for t in tickers:
+        print(f"\n=== Verarbeite Unternehmensdaten für: {t} ===")
+
+        success = False
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                ticker = yf.Ticker(t)
+                info = ticker.info or {}
+
+                # Falls Yahoo kein symbol returnt → eigenes
+                if "symbol" not in info or not info["symbol"]:
+                    info["symbol"] = t
+
+                # In Datenbank speichern
+                create_yf_company_from_info(info)
+
+                print(f"✔ Unternehmensinfo gespeichert: {t}")
+                success = True
+                break  # raus aus Retry-Loop
+
+            except IntegrityError as e:
+                print(f"⚠️ DB-Fehler für {t}: {e}")
+                break  # kein Retry (würde immer wieder fehlschlagen)
+
+            except Exception as e:
+                print(f"⚠️ Fehler bei {t} (Versuch {attempt}/{max_retries}): {e}")
+
+                # wenn wir den letzten Versuch erreicht haben → abbrechen
+                if attempt == max_retries:
+                    print(f"❌ Maximalversuche erreicht — {t} wird übersprungen.")
+                    break
+
+                # Ansonsten erneuter Versuch mit Wartezeit
+                sleep_time = base_sleep + random.uniform(0, jitter)
+                print(f"🔁 Warte {sleep_time:.2f}s und versuche erneut ...")
+                time.sleep(sleep_time)
+
+        # Wartezeit vor dem nächsten Ticker (Vorsicht!)
+        if success:
+            sleep_time = base_sleep + random.uniform(0, jitter)
+            print(f"⏳ Warte {sleep_time:.2f}s vor nächstem Ticker ...")
+            time.sleep(sleep_time)
+
+    print("\n✅ Fertig! Alle Unternehmensinformationen verarbeitet.\n")
+
+download_yf_company_info(tickers=stock_list)
