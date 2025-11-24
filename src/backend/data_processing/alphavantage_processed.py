@@ -1154,3 +1154,42 @@ def get_processed_table(table_name: str):
         return df
     except:
         return f"{table_name} not found!"
+    
+
+def get_processed_entries_by_symbol(table_name: str, symbol: str):
+    """
+    Lädt alle Einträge für ein bestimmtes Symbol aus einer Datenbanktabelle.
+
+    Parameters
+    ----------
+    table_name : str
+        Name der SQL-Tabelle.
+    symbol : str
+        Aktien-Ticker (z.B. 'AAPL').
+
+    Returns
+    -------
+    pandas.DataFrame
+        Gefilterte Daten.
+    """
+
+    inspector = inspect(engine)
+
+    # Prüfen ob Tabelle existiert
+    if table_name not in inspector.get_table_names():
+        raise ValueError(f"Table '{table_name}' does not exist in the database.")
+
+    # Tabelle laden
+    try:
+        df = pd.read_sql(f"SELECT * FROM {table_name}", engine)
+    except Exception as e:
+        raise RuntimeError(f"Could not load table '{table_name}': {e}")
+
+    # Prüfen ob symbol-Spalte existiert
+    if "symbol" not in df.columns:
+        raise ValueError(f"Table '{table_name}' does not contain a 'symbol' column.")
+
+    # Filtern
+    df_symbol = df[df["symbol"] == symbol].copy()
+
+    return df_symbol

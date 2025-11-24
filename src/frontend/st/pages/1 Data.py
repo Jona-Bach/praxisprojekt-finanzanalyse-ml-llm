@@ -5,8 +5,8 @@ from pathlib import Path
 from datetime import datetime
 from backend.data_model import TICKERS
 from backend.scheduler import load_data, load_initial_data
-from backend.database.db_functions import get_table, get_table_names, get_symbols_from_table, get_unique_table
-from backend.data_processing.alphavantage_processed import get_processed_table, process_alphavantage_raw_db
+from backend.database.db_functions import get_table, get_table_names, get_symbols_from_table, get_unique_table, get_yf_symbols_from_table
+from backend.data_processing.alphavantage_processed import get_processed_table, process_alphavantage_raw_db, get_processed_entries_by_symbol
 from backend.database.users_database import import_file_as_table, get_user_table, list_user_tables
 import openpyxl
 # Ordner der aktuellen Datei (z.B. app.py)
@@ -20,6 +20,7 @@ st.set_page_config(page_title="Data", page_icon="🔍")
 #____________________________________________________________
 
 tab1, tab2 = st.tabs(["Data Settings", "Analysis"])
+database_path_yf = "data/yfinance.db"
 
 
 #__________________________SIDEBAR___________________________
@@ -199,7 +200,55 @@ with tab1:
         except Exception as e:
             st.error(f"Error loading table '{chosen_table}': {e}")
 
+    list_yf = get_yf_symbols_from_table(database_path=database_path_yf, table_name="yf_price_history")
+    st.write(list_yf)
+
 
 with tab2:
 
     st.header("Market Analysis")
+    st.divider()
+
+    with st.container():
+
+        database_path = "data/alphavantage.db"
+        av_raw_data_symbols = get_symbols_from_table(database_path=database_path, table_name="alphavantage_raw_kpi")
+        av_pricing_symbols = get_symbols_from_table(database_path=database_path, table_name="alphavantage_daily_pricing")
+        all_tickers_to_update = av_raw_data_symbols + av_pricing_symbols
+        unique_list = sorted(list(set(all_tickers_to_update)))
+
+        st.subheader("Basic Ticker Analysis")
+        ticker_selection = st.selectbox(
+            label="Select Ticker",
+            options=unique_list,
+            help="Choose a Ticker from the Available Processed Data to analyze"
+        )
+
+        df_chosen_ticker = get_processed_entries_by_symbol("alphavantage_pricing_processed",ticker_selection)
+
+        def interactive_plot(df: pd.DataFrame):
+            # Liste aller Spalten
+            cols = df.columns.tolist()
+
+            # Auswahlfelder
+            col1, col2 = st.columns(2)
+            with col1:
+                x_axis = st.selectbox("Select X-axis column", cols)
+            with col2:
+                y_axis = st.selectbox("Select Y-axis column", cols)
+
+            # Nur plotten, wenn beides gewählt ist
+            if x_axis and y_axis:
+                fig = px.line(
+                    df,
+                    x=x_axis,
+                    y=y_axis,
+                    title=f"{y_axis} over {x_axis}",
+                    markers=True,
+                    template="plotly_white",
+                )
+                st.plotly_chart(fig, width="stretch")
+
+        interactive_plot(df_chosen_ticker)
+
+        

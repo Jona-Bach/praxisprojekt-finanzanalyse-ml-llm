@@ -24,6 +24,7 @@ def create_av_alchemy_db(folder_name, db_name):
 
 engine, Base, session, dbpath = create_av_alchemy_db("data", "alphavantage")
 engine_2, Base_2, session_2, dbpath_2 = create_av_alchemy_db("data", "system_config")
+engine_yf, Base_yf, session_yf, dbpath_yf = create_av_alchemy_db("data", "yfinance")
 
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text
@@ -32,6 +33,7 @@ from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 Base_2 = declarative_base()
+Base_yf = declarative_base()
 
 class AV_RAW(Base):
     __tablename__ = "alphavantage_raw_kpi"
@@ -319,6 +321,33 @@ class AV_PRICING(Base):
     # Timestamp for insert/update
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
+class YF_PRICING_RAW(Base_yf):
+    __tablename__ = "yf_pricing_raw"
+
+    symbol = Column(String, primary_key=True)
+    date   = Column(Date, primary_key=True)
+
+    close = Column(Float)              
+    high = Column(Float)             
+    low = Column(Float)                
+    open = Column(Float)             
+    volume = Column(Float) 
+
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+class YF_PRICE_HISTORY(Base_yf):
+    __tablename__ = "yf_price_history"
+
+    symbol = Column(String, primary_key=True)
+    date   = Column(Date, primary_key=True)
+
+    close = Column(Float)              
+    high = Column(Float)             
+    low = Column(Float)                
+    open = Column(Float)             
+    volume = Column(Float) 
+
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
 
 
@@ -327,24 +356,29 @@ class AV_PRICING(Base):
 # -------------------------------------------------
 inspector = inspect(engine)
 inspector_cfg = inspect(engine_2)
+inspector_yf = inspect(engine_yf)
 
-if "alphavantage_raw_kpi" not in inspector.get_table_names():
-    Base.metadata.create_all(engine)
-    print("✔ Tabelle erstellt.")
-else:
-    print("✔ Tabelle existiert bereits – kein Erstellen nötig.")
+# if "alphavantage_raw_kpi" not in inspector.get_table_names():
+#     Base.metadata.create_all(engine)
+#     print("✔ Tabelle erstellt.")
+# else:
+#     print("✔ Tabelle existiert bereits – kein Erstellen nötig.")
 
-if "alphavantage_daily_pricing" not in inspector.get_table_names():
-    Base.metadata.create_all(engine)
-    print("✔ Tabelle erstellt.")
-else:
-    print("✔ Tabelle existiert bereits – kein Erstellen nötig.")
+# if "alphavantage_daily_pricing" not in inspector.get_table_names():
+#     Base.metadata.create_all(engine)
+#     print("✔ Tabelle erstellt.")
+# else:
+#     print("✔ Tabelle existiert bereits – kein Erstellen nötig.")
 
-if "assistant_config" not in inspector_cfg.get_table_names():
-    Base_2.metadata.create_all(engine_2)
-    print("✔ Tabelle erstellt.")
-else:
-    print("✔ Tabelle existiert bereits – kein Erstellen nötig.")
+# if "assistant_config" not in inspector_cfg.get_table_names():
+#     Base_2.metadata.create_all(engine_2)
+#     print("✔ Tabelle erstellt.")
+# else:
+#     print("✔ Tabelle existiert bereits – kein Erstellen nötig.")
+
+Base.metadata.create_all(engine)
+Base_2.metadata.create_all(engine_2)
+Base_yf.metadata.create_all(engine_yf)
 
 
 # -------------------------------------------------
@@ -773,6 +807,95 @@ def create_av_pricing_entry(
     print(f"✔ Pricing-Daten für {symbol} am {date} gespeichert.")
     return entry
 
+from datetime import datetime
+from sqlalchemy.exc import IntegrityError
+
+def create_yf_pricing_entry(
+    symbol: str,
+    date,  # string "YYYY-MM-DD" oder datetime.date
+    
+    open: float = None,
+    high: float = None,
+    low: float = None,
+    close: float = None,
+    volume: float = None,
+):
+    """
+    Erzeugt einen YF_PRICING-Eintrag für historische Yahoo Finance OHLCV-Daten.
+    (Tabelle: yf_pricing)
+    """
+
+    # Datum umwandeln, falls String ("YYYY-MM-DD")
+    if isinstance(date, str):
+        date = datetime.strptime(date, "%Y-%m-%d").date()
+
+    # SQLAlchemy-Objekt erzeugen
+    entry = YF_PRICING_RAW(
+        symbol=symbol,
+        date=date,
+
+        open=open,
+        high=high,
+        low=low,
+        close=close,
+        volume=volume,
+    )
+
+    # Versuchen zu speichern
+    try:
+        session_yf.add(entry)
+        session_yf.commit()
+    except IntegrityError as e:
+        session_yf.rollback()
+        print(f"⚠️  Duplikat oder DB-Fehler für {symbol} am {date}: {e}")
+        return None
+
+    print(f"✔ YF Pricing-Daten gespeichert: {symbol} am {date}")
+    return entry
+
+
+def create_yf_price_history_entry(
+    symbol: str,
+    date,  # string "YYYY-MM-DD" oder datetime.date
+    
+    open: float = None,
+    high: float = None,
+    low: float = None,
+    close: float = None,
+    volume: float = None,
+):
+    """
+    Erzeugt einen YF_PRICING-Eintrag für historische Yahoo Finance OHLCV-Daten.
+    (Tabelle: yf_pricing)
+    """
+
+    # Datum umwandeln, falls String ("YYYY-MM-DD")
+    if isinstance(date, str):
+        date = datetime.strptime(date, "%Y-%m-%d").date()
+
+    # SQLAlchemy-Objekt erzeugen
+    entry = YF_PRICE_HISTORY(
+        symbol=symbol,
+        date=date,
+
+        open=open,
+        high=high,
+        low=low,
+        close=close,
+        volume=volume,
+    )
+
+    # Versuchen zu speichern
+    try:
+        session_yf.add(entry)
+        session_yf.commit()
+    except IntegrityError as e:
+        session_yf.rollback()
+        print(f"⚠️  Duplikat oder DB-Fehler für {symbol} am {date}: {e}")
+        return None
+
+    print(f"✔ YF Pricing-Daten gespeichert: {symbol} am {date}")
+    return entry
 
 def get_table(table_name: str):
     """
@@ -1046,3 +1169,25 @@ def remove_from_list_system_config(name: str, items):
     # Liste updaten
     return update_list_system_config(name, updated)
 
+
+def get_yf_symbols_from_table(database_path: str, table_name: str):
+    """
+    Holt alle eindeutigen Symbole ('symbol') aus einer Tabelle.
+    Gibt IMMER eine Liste zurück – auch wenn die Tabelle leer ist.
+    """
+    engine_yf = create_engine(f"sqlite:///{database_path}")
+    inspector_yf = inspect(engine_yf)
+
+    # Existiert die Tabelle überhaupt?
+    if table_name not in inspector_yf.get_table_names():
+        return []
+
+    try:
+        df = pd.read_sql(f"SELECT symbol FROM {table_name}", engine_yf)
+    except Exception:
+        return []
+
+    if "symbol" not in df.columns:
+        return []
+    
+    return df["symbol"].dropna().unique().tolist()
