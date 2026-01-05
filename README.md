@@ -1,4 +1,4 @@
-# Praxisprojekt Berichtheft Jonathan 
+# Praxisprojekt Bericht Jonathan Bach
 
 ---
 
@@ -304,7 +304,6 @@ Im Finanzkontext repräsentiert der RMSE die durchschnittliche absolute Abweichu
 
 Hier ist die überarbeitete und erweiterte Version des LLM-Abschnitts:
 
----
 
 ### 2.3 Large Language Models (LLMs)
 
@@ -371,6 +370,98 @@ Ein weiterer Vorteil liegt in der Few-Shot-Lernfähigkeit: LLMs können durch ge
 
 Die vorliegende Plattform nutzt diese Eigenschaften, um Nutzern einen direkten Vergleich zwischen quantitativen ML-Ansätzen und qualitativ-angereicherten LLM-Analysen zu ermöglichen. Dabei bleibt zu beachten, dass LLMs keine deterministischen Prognosen liefern, sondern probabilistische Ausgaben generieren, deren Interpretation Domänenwissen erfordert.
 
+---
+## 3. Datenbeschreibung
+
+### 3.1 Datenquellen
+
+Die im Finanzdashboard verarbeiteten Daten stammen aus (i) externen Marktdaten- und Fundamentaldatenquellen sowie (ii) nutzerseitig bereitgestellten Dateien. Als externe Anbieter werden **Yahoo Finance**, **Alpha Vantage** und **Financial Modeling Prep (FMP)** eingesetzt. Die externen Quellen liefern primär **historische Kurszeitreihen** in Form von **OHLCV-Daten** (Open, High, Low, Close, Volume). Abhängig vom Anbieter stehen darüber hinaus **Unternehmensmetadaten** und **fundamentale Kennzahlen** zur Verfügung (z. B. Unternehmenskennzahlen über Alpha Vantage).
+
+- **Yahoo Finance**: Bereitstellung historischer OHLCV-Zeitreihen sowie ausgewählter Unternehmensinformationen (z. B. Stammdaten/Profilinformationen, abhängig von der Abfrage).
+- **Alpha Vantage**: Bereitstellung zeitnaher (daily) Kursdaten und zusätzlicher Unternehmensmetriken/Fundamentaldaten (anbieter- und endpointabhängig).
+- **FMP**: Es liegen JSON-Datensätze aus FMP vor. Diese sind im aktuellen Implementierungsstand **noch nicht produktiv in die Datenpipeline integriert**, können jedoch bei Bedarf über eine entsprechende Import- und Harmonisierungsschicht angebunden werden.
+
+Zusätzlich können Nutzerinnen und Nutzer eigene Datensätze im Format **CSV** oder **Excel (XLS/XLSX)** hochladen, um individuelle Analysen durchzuführen oder alternative Datenquellen einzubinden.
+
+> **Hinweis zur Nachvollziehbarkeit**: Für die wissenschaftliche Dokumentation sollten die verwendeten Anbieter/Endpunkte in Form der offiziellen Dokumentationen zitiert werden (z. B. Anbieter-Doku, Nutzungsbedingungen). Alle Aussagen zu Dateninhalt, Aktualität und Einschränkungen sind entsprechend zu belegen.
+
+
+### 3.2 Datenumfang
+
+Der standardmäßig konfigurierte Download-Zeitraum umfasst **1995 bis 2020**. Dieser Zeitraum ist als Default in der Applikation hinterlegt, kann jedoch über eine **Settings-Seite** durch die Nutzerin bzw. den Nutzer angepasst werden. Als Ausgangsuniversum stehen derzeit **ca. 400 Aktien (Ticker-Symbole)** zur Verfügung, für die Daten auf Knopfdruck initial heruntergeladen und gespeichert werden können.
+
+Die Datenbeschaffung erfolgt **nicht automatisiert über einen Scheduler**, sondern wird **manuell** durch Nutzerinteraktion (Button-Klick) ausgelöst. Eine zeitgesteuerte Aktualisierung (z. B. täglich/weekly) ist als mögliche Erweiterung vorgesehen.
+
+Hinsichtlich der Aktualität werden die Quellen im Projekt derzeit unterschiedlich verwendet:
+- **Alpha Vantage** wird für **tagesaktuelle (daily) Preisdaten** herangezogen (sofern verfügbar und API-Limits dies zulassen).
+- **Yahoo Finance** wird primär für den **historischen Zeitraum (Default 1995–2020)** genutzt.
+
+Nutzerseitig hochgeladene Daten unterliegen in der aktuellen Version **keiner inhaltlichen Plausibilitätsprüfung** (z. B. Vollständigkeit, Datentypen, Frequenz), sondern werden grundsätzlich als „gegeben“ übernommen. Dies ist bewusst so gewählt, um maximale Flexibilität zu ermöglichen, stellt jedoch eine Einschränkung hinsichtlich Datenqualität und Reproduzierbarkeit dar (siehe Abschnitt 3.5).
+
+
+### 3.3 Datenpipeline und Speicherung
+
+Der Datenimport wird innerhalb der Streamlit-Anwendung durch einen **manuellen Start** (Button-Klick) initiiert. Anschließend erfolgt der Abruf über die jeweiligen APIs, wobei die Verarbeitung in einer iterativen Schleife über definierte Ticker erfolgt. Nach dem Abruf werden die Rohdaten in ein einheitliches Persistenzmodell überführt und dauerhaft gespeichert.
+
+Für die Speicherung wird eine lokale relationale Datenbank (**SQLite**) verwendet. Das Datenbankschema wird über **SQLAlchemy** modelliert und verwaltet. Dadurch werden die Daten
+- **persistent** abgelegt (wiederholbar abrufbar),
+- **strukturiert** gespeichert (Tabellenmodell),
+- und können in nachgelagerten Verarbeitungsschritten (z. B. Feature Engineering, Modelltraining, Dashboard-Visualisierung) effizient abgefragt werden.
+
+Je nach Datenquelle wird zusätzlich eine Quellenkennzeichnung (z. B. `source`) empfohlen, um Unterschiede zwischen Anbietern im weiteren Analyseprozess transparent zu machen (z. B. bei Abweichungen durch Adjustments oder Zeitzonen).
+
+
+### 3.4 Datenaufbereitung
+
+Die Datenaufbereitung ist im aktuellen Projektstand **quell- und datenartabhängig** umgesetzt:
+
+- **Yahoo Finance**: Die über Yahoo Finance bezogenen Daten werden überwiegend als **Rohzeitreihen (OHLCV)** sowie als **Unternehmensinformationen** genutzt und werden in der derzeitigen Version **nur minimal transformiert** (z. B. Format-/Typkonvertierungen beim Import). Eine weitergehende Aufbereitung (z. B. Bereinigung, Outlier-Handling, Harmonisierung auf ein einheitliches Handelskalender-Regime) erfolgt derzeit nicht automatisiert.
+
+- **Alpha Vantage**: Für Alpha-Vantage-Daten existiert ein **Processing-Skript**, das die Rohdaten aus der Datenbank extrahiert und eine Selektion/Filterung vornimmt. Dabei werden insbesondere Ticker/Datenreihen entfernt, die keine ausreichende Datenabdeckung aufweisen (z. B. fehlende Rückgaben für bestimmte Endpunkte). Die bereinigten Daten werden anschließend in eine „bereinigte“ Datenbankstruktur überführt, um sie konsistent für Modellierung und Auswertung bereitzustellen.
+
+- **Umgang mit fehlenden Werten**: Fehlende Werte werden im aktuellen Workflow **in späteren Schritten** (z. B. im Machine-Learning-Skript) weiter behandelt, indem unvollständige Datensätze (Nullwerte) gefiltert bzw. ausgeschlossen werden. Dies reduziert das Risiko fehlerhafter Modellinputs, kann jedoch zu einer Verringerung der Datenbasis führen.
+
+- **Regionale Abdeckung**: Bei der Interpretation ist zu berücksichtigen, dass **Alpha Vantage** in der verwendeten Konfiguration primär **US-börsennotierte** Werte zuverlässig abdeckt. Europäische Titel können abhängig vom Symbolschema und der Datenverfügbarkeit unvollständig sein. Dies ist insbesondere relevant, wenn im Dashboard ein gemischtes Universum (USA/EU) betrachtet wird.
+
+
+### 3.5 Datenqualität und Limitationen
+
+Durch die Nutzung mehrerer externer Datenanbieter können systematische Unterschiede auftreten, insbesondere hinsichtlich
+- **Berechnungsmethoden** (z. B. Adjustments für Splits/Dividenden),
+- **Zeitzonen und Handelskalendern**,
+- **Aggregationslogiken** (z. B. Definition von Tages-Schlusskursen bei unterschiedlichen Börsenplätzen),
+- sowie **Datenlücken** durch API-Restriktionen.
+
+Zusätzlich unterliegen die externen Datenquellen **API-Limits** (z. B. Request-Limits pro Zeiteinheit) und einer anbieterabhängigen **Aktualisierungsfrequenz**. Dies kann die Reproduzierbarkeit von Abrufen (Zeitpunktabhängigkeit) sowie die Vollständigkeit der Daten beeinträchtigen.
+
+Eine weitere Einschränkung besteht darin, dass **nicht für alle Instrumente oder Zeiträume „Adjusted Close“-Preise** verfügbar sind. Je nach Analyseziel (z. B. Renditeberechnung über lange Horizonte) kann dies die Vergleichbarkeit von Zeitreihen beeinflussen. Insgesamt ist die Leistungsfähigkeit der Anwendung daher in hohem Maße von Datenzugang, API-Berechtigungen und Verfügbarkeit der jeweiligen Endpunkte abhängig.
+
+> **Empfehlung**: Für wissenschaftliche Arbeiten sollte transparent dokumentiert werden, welche Preisdefinitionen (Close vs. Adjusted Close) verwendet werden und welche Auswirkungen dies auf Kennzahlen und Modelloutputs haben kann.
+
+
+### 3.6 Nutzerbereitgestellte Daten
+
+Nutzerinnen und Nutzer können eigene Datensätze im Format **CSV** oder **Excel (XLS/XLSX)** hochladen. Nach dem Upload werden die Daten in eine separate Datenbankstruktur integriert und stehen anschließend als Datenbasis für
+- explorative Analysen und Visualisierungen im Dashboard,
+- die Machine-Learning-Komponenten (z. B. Modelltraining/Inference),
+- sowie die LLM-basierte Analyse (z. B. textuelle Zusammenfassung/Interpretation)
+zur Verfügung.
+
+In der aktuellen Implementierung erfolgt beim Upload lediglich eine grundlegende Einbettung in die Datenhaltung. Eine weiterführende Validierung (Schema-Prüfung, Datumsformat, Pflichtspalten, Duplikatbehandlung) ist als Erweiterung sinnvoll, um Datenqualität und Reproduzierbarkeit zu erhöhen.
+
+
+### Mini-Schema (Tabellarische Übersicht)
+
+| Tabelle | Quelle | Zweck | Primärschlüssel / Eindeutigkeit | Wichtige Spalten (Auszug) |
+|---|---|---|---|---|
+| `AV_RAW` | Alpha Vantage | Rohdaten zu Unternehmen (Overview) + ausgewählte Finanzabschluss-Positionen (Cashflow, Balance Sheet, Income Statement) | **Empfohlen:** `symbol` eindeutig (falls pro Symbol nur letzter Stand gespeichert wird) | `symbol`, `asset_type`, `name`, `description`, `cik`, `exchange`, `currency`, `country`, `sector`, `industry`, `address`, `official_site`, `fiscal_year_end`, `latest_quarter`, `market_capitalization`, `ebitda_overview`, `pe_ratio`, `peg_ratio`, `book_value`, `dividend_per_share`, `dividend_yield_raw`, `eps`, `revenue_ttm`, `gross_profit_ttm`, `return_on_equity_ttm`, `beta_raw`, `week_52_high`, `week_52_low`, `moving_average_50_day`, `moving_average_200_day`, `shares_outstanding`, `shares_float`, `percent_insiders`, `percent_institutions`, `dividend_date`, `ex_dividend_date`, **Cashflow:** `fiscal_date_ending_cf`, `reported_currency_cf`, `operating_cashflow_raw`, `capital_expenditures_raw`, `dividend_payout`, `change_in_cash_and_cash_equivalents`, `net_income_cf`, **Balance Sheet:** `inventory_raw`, `total_liabilities_raw`, `total_shareholder_equity_raw`, `long_term_debt`, `retained_earnings`, **Income Statement:** `fiscal_date_ending_inc`, `reported_currency_inc`, `total_revenue_raw`, `operating_income_raw`, `ebit`, `ebitda_inc`, `net_income_raw` |
+| `AV_PRICING` | Alpha Vantage (`TIME_SERIES_DAILY_ADJUSTED`) | Speicherung des zuletzt verfügbaren Tagesdatensatzes (Daily Adjusted) pro Symbol | **Empfohlen:** Unique (`symbol`, `date`) | `symbol`, `date`, `open`, `high`, `low`, `close`, `adjusted_close`, `volume`, `dividend_amount`, `split_coefficient` |
+| `YF_COMPANY_INFO` | Yahoo Finance | Unternehmens-Stammdaten/Profilinformationen | **Empfohlen:** `symbol` eindeutig | `symbol`, `longName`, `shortName`, `sector`, `industry`, `longBusinessSummary`, `address1`, `city`, `state`, `zip`, `country`, `website`, `irWebsite`, `phone`, `fullTimeEmployees`, `companyOfficers`, `overallRisk`, `auditRisk`, `boardRisk`, `compensationRisk`, `shareHolderRightsRisk`, `exchange`, `fullExchangeName`, `region`, `language` |
+| `YF_OHLCV` | Yahoo Finance | Historische Kurszeitreihe (OHLCV) | **Empfohlen:** Unique (`symbol`, `date`) | `symbol`, `date`, `open`, `high`, `low`, `close`, `volume` |
+
+> Hinweis: Viele Alpha-Vantage-Werte werden als „raw“ gespeichert (Originalformat aus der API, häufig String) und erst in nachgelagerten Schritten (Processing/ML) numerisch interpretiert bzw. gefiltert.
+
+---
 
 
 ## Literatur:

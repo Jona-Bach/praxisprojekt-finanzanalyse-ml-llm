@@ -273,7 +273,7 @@ if uploaded_file is not None:
 table_name = st.sidebar.text_input(
     "Table name in database",
     value=default_table_name,
-    help="Name der Tabelle in deiner users_database",
+    help="Name of your table in Database",
 )
 
 # 3. Verhalten bei vorhandener Tabelle
@@ -282,9 +282,9 @@ if_exists_option = st.sidebar.selectbox(
     options=["fail", "replace", "append"],
     index=1,  # default: replace
     help=(
-        "'fail' = Fehler, wenn Tabelle existiert\n"
-        "'replace' = Tabelle löschen + neu anlegen\n"
-        "'append' = Zeilen an bestehende Tabelle anhängen"
+        "'fail' = Fail, if Table exists\n"
+        "'replace' = Delete Table + create new\n"
+        "'append' = Append Rows to Table"
     ),
 )
 
