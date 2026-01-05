@@ -1170,6 +1170,275 @@ Damit ist eine spätere Wiederverwendung (Inference) grundsätzlich möglich, so
 
 ### 4.3.3 LLM-Integration
 
+Die LLM-Funktionalität ist in der aktuellen Version **direkt im Streamlit-Frontend** implementiert und befindet sich unter  
+[`src/frontend/st/pages/3 LLM Playground.py`](src/frontend/st/pages/3%20LLM%20Playground.py).  
+Der LLM-Playground ermöglicht es, mittels Large Language Models (LLMs) intelligente Analysen und Vorhersagen auf Basis der vorhandenen Datenquellen durchzuführen. Als LLM-Backend kommt **Ollama** zum Einsatz, das lokal oder in Containern betrieben werden kann.
+
+
+**Überblick: Ziel des LLM-Playgrounds**
+
+Der LLM-Playground ist als **experimentelle Analyse- und Vorhersageumgebung** konzipiert. Nutzer:innen können:
+
+- eine Datenquelle auswählen (Yahoo Finance / AlphaVantage / User-Tabellen)
+- Feature-Spalten (X) und Target-Spalte (y) bestimmen
+- einen Vorhersagetyp wählen (Regression, Klassifikation, Trendanalyse, freie Analyse)
+- strukturierte Prompts automatisch generieren lassen
+- LLM-basierte Analysen und Vorhersagen erhalten
+- optional eigene Prompt-Anweisungen hinzufügen
+
+Die Kommunikation mit Ollama erfolgt über dessen REST-API (`/api/generate`, `/api/pull`, `/api/version`).
+
+
+**Ollama-Anbindung und Verbindungsverwaltung**
+
+Die Verbindung zu Ollama kann über drei Modi konfiguriert werden:
+
+**1) Container-Modus**
+- Base-URL: `http://ollama:11434`
+- Verwendet Docker-interne Netzwerkverbindung
+- Voraussetzung: Ollama läuft als Docker-Container im selben Netzwerk
+
+**2) Host-Modus**
+- Base-URL: `http://host.docker.internal:11434`
+- Ermöglicht Zugriff auf Ollama, das auf dem Docker-Host läuft
+- Nützlich für Entwicklungsumgebungen
+
+**3) Lokaler/Custom-Modus**
+- Base-URL: benutzerdefiniert (Standard: `http://localhost:11434`)
+- Flexibel für beliebige Ollama-Instanzen
+
+Die Funktion `base_url_from_choice` konvertiert die Auswahl in die entsprechende URL. Über `check_connection` wird die Erreichbarkeit des Ollama-Servers mittels `/api/version`-Endpoint geprüft.
+
+
+**Modell-Verwaltung**
+
+Nutzer:innen können ein Ollama-Modell (z.B. `mathstral:7b`, `llama3`, `mistral`) angeben. Die Funktion `ensure_model` stellt sicher, dass das Modell verfügbar ist:
+
+```python
+requests.post(f"{base_url}/api/pull", 
+              json={"name": model, "stream": False}, 
+              timeout=timeout)
+```
+
+Optional kann "Auto-load on analysis" aktiviert werden, sodass das Modell automatisch vor der Analyse geladen wird, falls es noch nicht vorhanden ist.
+
+
+**Datenquellen-Integration**
+
+Der LLM-Playground greift auf dieselben Datenquellen zu wie die ML-Pipeline:
+
+- **Price History:** Alle Kurs-Historien über `get_all_yf_price_history()`
+- **Single Stock Price:** Einzelaktien-Daten über `get_yf_pricing_raw(symbol)`
+- **Alphavantage:** Vorverarbeitete Tabellen über `get_processed_table(table_name)`
+- **User Tables:** Benutzerdefinierte Tabellen über `get_user_table(table_name)`
+
+Die Funktion `load_data_from_source` lädt die Daten und wendet dabei die automatische Typ-Konvertierung an.
+
+
+**Automatische Datenvorverarbeitung**
+
+Analog zur ML-Pipeline werden Datentypen automatisch erkannt und konvertiert:
+
+**1) Numerik-Erkennung (`_try_parse_numeric_series`)**
+- Konvertiert String-Spalten in Float-Werte
+- Unterstützt verschiedene Formate:
+  - Deutsche Notation: `1.234,56` → `1234.56`
+  - Prozente: `12,3%` → `12.3`
+  - Währungen: `€`, `$` werden entfernt
+- Konvertierung erfolgt nur bei ≥50% plausiblen Werten
+
+**2) Datums-/Zeit-Erkennung (`auto_convert_numeric_and_datetime`)**
+- Erkennt Spalten mit zeitbezogenen Namen (`date`, `time`, `timestamp`)
+- Konvertiert per `pd.to_datetime` bei ≥50% Erfolgsrate
+
+Diese Vorverarbeitung ermöglicht robuste Analysen über heterogene Datenquellen hinweg.
+
+
+**Vorhersagetypen und Prompt-Generierung**
+
+Der Playground unterstützt vier strukturierte Vorhersagetypen, für die jeweils spezifische Prompts automatisch generiert werden:
+
+##### 1) Regression (Vorhersage numerischer Werte)
+**Zweck:** Prognose eines kontinuierlichen Zielwerts (z.B. Aktienkurs, KPI).  
+**Prompt-Struktur:**
+- Analyse von Trends und Mustern in Features
+- Identifikation von Korrelationen mit Target
+- Konkrete numerische Vorhersage
+- Konfidenzintervall (Min-Max-Bereich)
+- Kurze Begründung
+
+**Ausgabeformat:**
+```
+Prediction: [numerischer Wert]
+Confidence Interval: [min] - [max]
+Justification: [Analyse]
+```
+
+##### 2) Klassifikation (Vorhersage von Kategorien)
+**Zweck:** Zuordnung zu diskreten Klassen (z.B. Sektor, Rating).  
+**Prompt-Struktur:**
+- Analyse von Mustern in Features
+- Identifikation klassifikationsrelevanter Features
+- Auswahl der wahrscheinlichsten Kategorie
+- Wahrscheinlichkeiten für Top-3-Kategorien
+- Begründung mit konkreten Beobachtungen
+
+**Ausgabeformat:**
+```
+Prediction: [Kategorie]
+Probability: [Prozent]
+Alternative Categories: [Kategorie 2] ([Prozent]), [Kategorie 3] ([Prozent])
+Justification: [Analyse]
+```
+
+##### 3) Trendanalyse (Vorhersage der Richtung)
+**Zweck:** Prognose, ob ein Wert steigen, fallen oder stabil bleiben wird.  
+**Prompt-Struktur:**
+- Identifikation des aktuellen Trends
+- Analyse des Feature-Einflusses auf den Trend
+- Vorhersage der Trendfortsetzung/-umkehr
+- Klassifikation: RISING, FALLING, oder STABLE
+- Begründung mit Momentum-Indikatoren
+
+**Ausgabeformat:**
+```
+Trend Prediction: [RISING/FALLING/STABLE]
+Confidence: [High/Medium/Low]
+Expected Change: [Prozent oder absoluter Wert]
+Justification: [Analyse mit technischen Indikatoren]
+```
+
+##### 4) Freie Analyse
+**Zweck:** Umfassende, explorative Datenanalyse ohne festgelegtes Vorhersageziel.  
+**Prompt-Struktur:**
+- Analyse von Datenqualität und Vollständigkeit
+- Identifikation von Mustern, Trends und Anomalien
+- Untersuchung von Feature-Target-Korrelationen
+- Bewertung der Vorhersagbarkeit
+- Empfehlungen für weitere Analyseschritte
+
+Diese Analyse ist besonders nützlich für initiale Datenexploration.
+
+
+**Prompt-Konstruktion**
+
+Die Funktion `build_prediction_prompt` erstellt strukturierte Prompts mit folgenden Komponenten:
+
+**Daten-Sample:**
+- Letzte N Zeilen des DataFrames (konfigurierbar, Standard: 10)
+- Enthält Features und Target in Tabellenform
+
+**Statistiken:**
+- Deskriptive Statistiken (`describe()`) für alle relevanten Spalten
+- Umfasst: Count, Mean, Std, Min, Quartile, Max
+
+**Kontext:**
+- Rollendefinition ("You are a financial analyst with expertise in...")
+- Aufgabenbeschreibung (TASK)
+- Verfügbare Features
+- Klare Anweisungen (INSTRUCTIONS)
+- Strukturiertes Ausgabeformat (FORMAT)
+
+Optional können Nutzer:innen zusätzliche Anweisungen hinzufügen, die an den generierten Prompt angehängt werden.
+
+
+**LLM-Kommunikation**
+
+Die Generierung erfolgt über die Ollama-API:
+
+```python
+requests.post(f"{base_url}/api/generate",
+              json={"model": model, 
+                    "prompt": prompt, 
+                    "stream": False},
+              timeout=timeout)
+```
+
+**Wichtige Parameter:**
+- `stream=False`: Antwort wird komplett zurückgegeben (kein Streaming)
+- `timeout`: Konfigurierbar (5-600s, Standard: 120s)
+- Sollte für Modell-Downloads erhöht werden
+
+Die Antwort wird aus dem JSON-Response extrahiert: `data.get("response", "")`.
+
+
+**Benutzeroberfläche und Workflow**
+
+**Sidebar-Konfiguration:**
+1. Ollama-Quelle wählen (Container/Host/Local)
+2. Verbindung testen
+3. Modellname eingeben (z.B. `mathstral:7b`)
+4. Optional: Modell manuell laden
+5. Timeout einstellen
+6. Auto-Load aktivieren/deaktivieren
+7. Datenquelle auswählen
+8. Bei Bedarf: Symbol oder Tabellenname angeben
+
+**Hauptbereich:**
+1. **Datenübersicht:** Metriken (Zeilen, Spalten, numerische Spalten)
+2. **DataFrame-Preview:** Expandable mit ersten 50 Zeilen
+3. **Feature/Target-Auswahl:** Multiselect für Features, Dropdown für Target
+4. **Vorhersagekonfiguration:** Typ wählen, Sample-Größe einstellen
+5. **Custom-Prompt (optional):** Zusätzliche Anweisungen
+6. **Analyse starten:** Button triggert gesamten Workflow
+
+**Analyse-Ablauf:**
+1. Verbindung prüfen
+2. Modell laden (wenn Auto-Load aktiv)
+3. Prompt generieren
+4. LLM-Anfrage senden
+5. Antwort anzeigen
+6. Metadaten bereitstellen (Modell, Typ, Features, Generierungszeit)
+
+
+**Fehlerbehandlung**
+
+Verschiedene Fehlerszenarien werden abgefangen:
+
+**Verbindungsfehler:**
+- `check_connection` fängt Connection-Exceptions ab
+- Zeigt spezifische Fehlermeldung (Timeout, Status-Code, etc.)
+
+**HTTP-Fehler:**
+- Bei fehlerhaften API-Requests wird Status-Code und Response-Text angezeigt
+
+**Timeout-Fehler:**
+- Konfigurierbarer Timeout verhindert unendliches Warten
+- Empfehlung: Timeout für große Modelle erhöhen
+
+**Leere Daten:**
+- Warnung, wenn keine Daten geladen werden können
+- Workflow wird gestoppt (`st.stop()`)
+
+
+**Metadaten und Transparenz**
+
+Nach erfolgreicher Analyse werden folgende Metadaten angezeigt:
+
+- Verwendetes Modell
+- Vorhersagetyp
+- Datenquelle
+- Feature-Spalten
+- Target-Spalte
+- Generierungszeit
+- Sample-Größe
+
+Der generierte Prompt kann optional eingesehen werden, um die LLM-Anfrage nachzuvollziehen.
+
+
+#### Grenzen und bekannte Einschränkungen
+
+- **Modellabhängige Qualität:** Die Vorhersagequalität hängt stark vom gewählten Ollama-Modell ab. Kleinere Modelle (<7B Parameter) können bei komplexen Finanzanalysen limitiert sein.
+- **Keine Echtzeitverarbeitung:** Streaming-Responses werden aktuell nicht unterstützt (`stream=False`), was bei großen Antworten zu Wartezeiten führen kann.
+- **Prompt-Engineering manuell:** Die automatisch generierten Prompts sind generisch; für spezialisierte Anwendungsfälle sind manuelle Anpassungen nötig.
+- **Keine Validierung der LLM-Ausgaben:** Die Antworten werden nicht automatisch auf Plausibilität oder Struktur geprüft. Halluzinationen sind möglich.
+- **Kontextlänge limitiert:** Durch die Sample-Größe (max. 50 Zeilen) können nicht alle Datenmuster erfasst werden. Bei sehr langen Zeitreihen gehen Informationen verloren.
+- **Keine historische Speicherung:** Generierte Analysen werden nicht persistent gespeichert; ein erneutes Abrufen erfordert eine neue Anfrage.
+- **Ressourcenabhängigkeit:** Ollama benötigt ausreichend RAM und ggf. GPU-Ressourcen. Bei unzureichender Hardware können Timeouts oder OOM-Fehler auftreten.
+- **Kein Multi-Turn-Dialog:** Aktuell wird pro Anfrage ein isolierter Prompt gesendet; eine Konversation mit Kontext-Carry-over ist nicht implementiert.
+- **Daten-Leakage möglich:** Wie bei der ML-Pipeline besteht das Risiko, dass Target-Informationen in Features einfließen, wenn keine saubere Trennung erfolgt.
+- **Sprachabhängigkeit:** Die Prompts sind primär auf Englisch ausgelegt; deutschsprachige Modelle oder Antworten erfordern ggf. Anpassungen.
+
 #### 4.3.3.1 Verbindungs-Management (llm_functions.py)
 
 Das Modul [`llm_functions.py`](src/backend/llm_functions.py) abstrahiert die Kommunikation mit Ollama und stellt Hilfsfunktionen für Verbindungsprüfung und Konfiguration bereit.

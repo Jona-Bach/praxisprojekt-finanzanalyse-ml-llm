@@ -1,4 +1,3 @@
-# file: src/backend/launch.py
 import os
 import time
 import requests
@@ -14,7 +13,7 @@ from backend.database.db_functions import get_all_yf_price_history, get_yf_prici
 st.set_page_config(page_title="LLM Playground", page_icon="🤖", layout="wide")
 
 # -----------------------------
-# Hilfsfunktionen - Ollama
+# Helper Functions - Ollama
 # -----------------------------
 def base_url_from_choice(choice: str, custom: str | None = None) -> str:
     if choice == "Container":
@@ -27,18 +26,18 @@ def base_url_from_choice(choice: str, custom: str | None = None) -> str:
 
 
 def check_connection(base_url: str, timeout: float = 3.0) -> tuple[bool, str]:
-    """Prüft, ob Ollama am base_url erreichbar ist."""
+    """Checks if Ollama is reachable at base_url."""
     try:
         r = requests.get(f"{base_url}/api/version", timeout=timeout)
         if r.ok:
-            return True, f"Verbunden mit Ollama @ {base_url} (Version: {r.json().get('version', 'unbekannt')})"
-        return False, f"Keine OK-Antwort von {base_url} (Status {r.status_code})"
+            return True, f"Connected to Ollama @ {base_url} (Version: {r.json().get('version', 'unknown')})"
+        return False, f"No OK response from {base_url} (Status {r.status_code})"
     except Exception as e:
-        return False, f"Keine Verbindung zu {base_url}: {e}"
+        return False, f"No connection to {base_url}: {e}"
 
 
 def ensure_model(base_url: str, model: str, timeout: float = 120.0) -> None:
-    """Sorgt dafür, dass ein Modell vorhanden ist."""
+    """Ensures that a model is available."""
     try:
         resp = requests.post(
             f"{base_url}/api/pull",
@@ -46,11 +45,11 @@ def ensure_model(base_url: str, model: str, timeout: float = 120.0) -> None:
             timeout=timeout,
         )
     except Exception as e:
-        st.info(f"Modell '{model}' konnte nicht automatisch geladen werden: {e}")
+        st.info(f"Model '{model}' could not be automatically loaded: {e}")
 
 
 def generate_once(base_url: str, model: str, prompt: str, timeout: float = 120.0) -> str:
-    """Einmalige Textgenerierung (keine Streaming-Antwort)."""
+    """Single text generation (no streaming response)."""
     r = requests.post(
         f"{base_url}/api/generate",
         json={"model": model, "prompt": prompt, "stream": False},
@@ -62,10 +61,10 @@ def generate_once(base_url: str, model: str, prompt: str, timeout: float = 120.0
 
 
 # -----------------------------
-# Hilfsfunktionen - Daten
+# Helper Functions - Data
 # -----------------------------
 def _try_parse_numeric_series(s: pd.Series) -> pd.Series | None:
-    """Versucht, eine String-Serie robust in floats umzuwandeln."""
+    """Attempts to robustly convert a string series to floats."""
     s = s.astype(str).str.strip()
     s = s.replace({"": np.nan, "-": np.nan, "NA": np.nan, "NaN": np.nan})
 
@@ -95,7 +94,7 @@ def _try_parse_numeric_series(s: pd.Series) -> pd.Series | None:
 
 
 def auto_convert_numeric_and_datetime(df: pd.DataFrame) -> pd.DataFrame:
-    """Konvertiert String-Spalten in float/datetime."""
+    """Converts string columns to float/datetime."""
     df = df.copy()
 
     for col in df.columns:
@@ -107,7 +106,7 @@ def auto_convert_numeric_and_datetime(df: pd.DataFrame) -> pd.DataFrame:
         col_lower = col.lower()
 
         if any(k in col_lower for k in ["date", "time", "timestamp"]):
-            dt = pd.to_datetime(col_series, errors="coerce", infer_datetime_format=True)
+            dt = pd.to_datetime(col_series, errors="coerce")
             if dt.notna().mean() > 0.5:
                 df[col] = dt
                 continue
@@ -125,7 +124,7 @@ def load_data_from_source(
     symbol: str = None,
     table_name: str = None,
 ):
-    """Lädt Daten je nach ausgewählter Quelle."""
+    """Loads data depending on selected source."""
     if source == "Price History":
         df = get_all_yf_price_history()
     elif source == "Single Stock Price":
@@ -156,125 +155,125 @@ def build_prediction_prompt(
     target_col: str,
     sample_size: int = 10
 ) -> str:
-    """Erstellt den Prompt für das LLM basierend auf Vorhersagetyp und Daten."""
+    """Creates the prompt for the LLM based on prediction type and data."""
     
-    # Datensample vorbereiten
+    # Prepare data sample
     df_sample = df[feature_cols + [target_col]].tail(sample_size)
     data_str = df_sample.to_string(index=False)
     
-    # Statistiken
+    # Statistics
     stats_str = df[feature_cols + [target_col]].describe().to_string()
     
-    # Basis-Prompt je nach Typ
-    if prediction_type == "Regression (Zahlenwert vorhersagen)":
-        prompt = f"""Du bist ein Finanzanalyst mit Expertise in quantitativer Analyse. 
+    # Base prompt depending on type
+    if prediction_type == "Regression (predict numerical value)":
+        prompt = f"""You are a financial analyst with expertise in quantitative analysis. 
 
-AUFGABE: Analysiere die folgenden Finanzdaten und erstelle eine fundierte Vorhersage für '{target_col}'.
+TASK: Analyze the following financial data and create a well-founded prediction for '{target_col}'.
 
-VERFÜGBARE FEATURES:
+AVAILABLE FEATURES:
 {', '.join(feature_cols)}
 
-AKTUELLE DATEN (letzte {sample_size} Zeilen):
+CURRENT DATA (last {sample_size} rows):
 {data_str}
 
-STATISTIKEN:
+STATISTICS:
 {stats_str}
 
-ANWEISUNG:
-1. Analysiere die Trends und Muster in den Features
-2. Identifiziere relevante Korrelationen mit dem Target '{target_col}'
-3. Gib eine konkrete numerische Vorhersage für den nächsten Wert von '{target_col}'
-4. Begründe deine Vorhersage kurz und prägnant
-5. Nenne ein Konfidenzintervall (min-max Bereich)
+INSTRUCTIONS:
+1. Analyze the trends and patterns in the features
+2. Identify relevant correlations with the target '{target_col}'
+3. Provide a concrete numerical prediction for the next value of '{target_col}'
+4. Justify your prediction briefly and concisely
+5. State a confidence interval (min-max range)
 
 FORMAT:
-Vorhersage: [Zahlenwert]
-Konfidenzintervall: [min] - [max]
-Begründung: [Deine Analyse]"""
+Prediction: [numerical value]
+Confidence Interval: [min] - [max]
+Justification: [Your analysis]"""
 
-    elif prediction_type == "Klassifikation (Kategorie vorhersagen)":
+    elif prediction_type == "Classification (predict category)":
         unique_values = df[target_col].unique()[:10]
-        prompt = f"""Du bist ein Finanzanalyst mit Expertise in Klassifikationsaufgaben.
+        prompt = f"""You are a financial analyst with expertise in classification tasks.
 
-AUFGABE: Analysiere die folgenden Daten und klassifiziere den nächsten Wert von '{target_col}'.
+TASK: Analyze the following data and classify the next value of '{target_col}'.
 
-VERFÜGBARE FEATURES:
+AVAILABLE FEATURES:
 {', '.join(feature_cols)}
 
-MÖGLICHE KATEGORIEN FÜR '{target_col}':
+POSSIBLE CATEGORIES FOR '{target_col}':
 {', '.join(map(str, unique_values))}
 
-AKTUELLE DATEN (letzte {sample_size} Zeilen):
+CURRENT DATA (last {sample_size} rows):
 {data_str}
 
-STATISTIKEN:
+STATISTICS:
 {stats_str}
 
-ANWEISUNG:
-1. Analysiere die Muster in den Features
-2. Identifiziere, welche Features die Klassifikation beeinflussen
-3. Wähle die wahrscheinlichste Kategorie für den nächsten Wert
-4. Begründe deine Wahl mit konkreten Beobachtungen aus den Daten
-5. Gib Wahrscheinlichkeiten für die Top-3 Kategorien an (falls möglich)
+INSTRUCTIONS:
+1. Analyze the patterns in the features
+2. Identify which features influence the classification
+3. Choose the most likely category for the next value
+4. Justify your choice with concrete observations from the data
+5. Provide probabilities for the top 3 categories (if possible)
 
 FORMAT:
-Vorhersage: [Kategorie]
-Wahrscheinlichkeit: [Prozent]
-Alternative Kategorien: [Kategorie 2] ([Prozent]), [Kategorie 3] ([Prozent])
-Begründung: [Deine Analyse]"""
+Prediction: [category]
+Probability: [percent]
+Alternative Categories: [category 2] ([percent]), [category 3] ([percent])
+Justification: [Your analysis]"""
 
-    elif prediction_type == "Trend-Analyse (Richtung vorhersagen)":
-        prompt = f"""Du bist ein Finanzanalyst mit Expertise in Trendanalyse.
+    elif prediction_type == "Trend Analysis (predict direction)":
+        prompt = f"""You are a financial analyst with expertise in trend analysis.
 
-AUFGABE: Analysiere die Trends und sage vorher, ob '{target_col}' steigen, fallen oder stabil bleiben wird.
+TASK: Analyze the trends and predict whether '{target_col}' will rise, fall, or remain stable.
 
-VERFÜGBARE FEATURES:
+AVAILABLE FEATURES:
 {', '.join(feature_cols)}
 
-AKTUELLE DATEN (letzte {sample_size} Zeilen):
+CURRENT DATA (last {sample_size} rows):
 {data_str}
 
-STATISTIKEN:
+STATISTICS:
 {stats_str}
 
-ANWEISUNG:
-1. Identifiziere den aktuellen Trend in '{target_col}'
-2. Analysiere, wie die Features den Trend beeinflussen
-3. Sage vorher, ob der Trend sich fortsetzt, umkehrt oder stagniert
-4. Klassifiziere als: STEIGEND, FALLEND oder STABIL
-5. Begründe deine Vorhersage mit Momentum-Indikatoren und Feature-Analyse
+INSTRUCTIONS:
+1. Identify the current trend in '{target_col}'
+2. Analyze how the features influence the trend
+3. Predict whether the trend will continue, reverse, or stagnate
+4. Classify as: RISING, FALLING, or STABLE
+5. Justify your prediction with momentum indicators and feature analysis
 
 FORMAT:
-Trend-Vorhersage: [STEIGEND/FALLEND/STABIL]
-Konfidenz: [Hoch/Mittel/Niedrig]
-Erwartete Änderung: [Prozent oder absoluter Wert]
-Begründung: [Deine Analyse mit technischen Indikatoren]"""
+Trend Prediction: [RISING/FALLING/STABLE]
+Confidence: [High/Medium/Low]
+Expected Change: [percent or absolute value]
+Justification: [Your analysis with technical indicators]"""
 
-    else:  # Freie Analyse
-        prompt = f"""Du bist ein Finanzanalyst mit breiter Expertise.
+    else:  # Free Analysis
+        prompt = f"""You are a financial analyst with broad expertise.
 
-AUFGABE: Führe eine umfassende Analyse der folgenden Daten durch.
+TASK: Conduct a comprehensive analysis of the following data.
 
-VERFÜGBARE FEATURES:
+AVAILABLE FEATURES:
 {', '.join(feature_cols)}
 
 TARGET VARIABLE:
 {target_col}
 
-AKTUELLE DATEN (letzte {sample_size} Zeilen):
+CURRENT DATA (last {sample_size} rows):
 {data_str}
 
-STATISTIKEN:
+STATISTICS:
 {stats_str}
 
-ANWEISUNG:
-1. Analysiere die Datenqualität und Vollständigkeit
-2. Identifiziere Muster, Trends und Anomalien
-3. Untersuche Korrelationen zwischen Features und Target
-4. Gib Einschätzungen zur Vorhersagbarkeit
-5. Empfehle weitere Analyseschritte oder Feature Engineering
+INSTRUCTIONS:
+1. Analyze data quality and completeness
+2. Identify patterns, trends, and anomalies
+3. Examine correlations between features and target
+4. Provide assessments on predictability
+5. Recommend further analysis steps or feature engineering
 
-Erstelle eine strukturierte, detaillierte Analyse."""
+Create a structured, detailed analysis."""
 
     return prompt
 
@@ -282,20 +281,20 @@ Erstelle eine strukturierte, detaillierte Analyse."""
 # -----------------------------
 # Streamlit UI
 # -----------------------------
-st.title("🤖 LLM Playground mit Datenanalyse")
+st.title("🤖 LLM Playground with Data Analysis")
 
 st.caption("""
-Nutze Ollama-LLMs für intelligente Finanzanalysen und Vorhersagen basierend auf deinen Daten.
+Use Ollama LLMs for intelligent financial analysis and predictions based on your data.
 """)
 
 # -----------------------------
-# Sidebar: Ollama-Konfiguration
+# Sidebar: Ollama Configuration
 # -----------------------------
 with st.sidebar:
-    st.header("⚙️ Ollama Einstellungen")
+    st.header("⚙️ Ollama Settings")
     
     choice = st.radio(
-        "Quelle wählen:",
+        "Choose source:",
         options=["Container", "Host", "Local"],
         index=0,
         horizontal=True,
@@ -308,7 +307,7 @@ with st.sidebar:
     base_url = base_url_from_choice(choice, custom_url)
     st.code(base_url, language=None)
 
-    if st.button("🔌 Verbindung testen"):
+    if st.button("🔌 Test connection"):
         ok, msg = check_connection(base_url)
         if ok:
             st.success(msg)
@@ -317,27 +316,27 @@ with st.sidebar:
 
     st.divider()
     
-    model = st.text_input("Modellname:", value="mathstral:7b")
+    model = st.text_input("Model name:", value="mathstral:7b")
     
     col_a, col_b = st.columns(2)
     with col_a:
         if st.button("🔽 Load Model"):
-            with st.spinner(f"Lade Modell '{model}'..."):
+            with st.spinner(f"Loading model '{model}'..."):
                 ensure_model(base_url, model, timeout=120)
-                st.success(f"✓ Modell '{model}' geladen!")
+                st.success(f"✓ Model '{model}' loaded!")
     with col_b:
-        timeout_s = st.number_input("Timeout (s)", min_value=5, max_value=600, value=120, help="Timeout bestimmt wie lange auf die Antwort des Modells gewartet wird (sollte beim Download erhöht werden)")
+        timeout_s = st.number_input("Timeout (s)", min_value=5, max_value=600, value=120, help="Timeout determines how long to wait for the model's response (should be increased for downloads)")
     
-    auto_pull = st.toggle("Auto-Load bei Analyse", value=True, 
-                          help="Modell automatisch laden, wenn nicht vorhanden")
+    auto_pull = st.toggle("Auto-load on analysis", value=True, 
+                          help="Automatically load model if not available")
 
     st.divider()
     
-    # Datenquelle
-    st.header("📊 Datenquelle")
+    # Data source
+    st.header("📊 Data Source")
     
     data_source = st.selectbox(
-        "Datenquelle",
+        "Data source",
         [
             "No Table selected",
             "Price History",
@@ -351,53 +350,53 @@ with st.sidebar:
     table_name = None
 
     if data_source == "Single Stock Price":
-        symbol = st.text_input("Symbol (z.B. AAPL)", value="AAPL")
+        symbol = st.text_input("Symbol (e.g. AAPL)", value="AAPL")
     elif data_source == "No Table selected":
-        st.info("Wähle eine Tabelle")
+        st.info("Select a table")
     elif data_source == "Alphavantage":
         ALPHAVANTAGE_TABLES = [
             "alphavantage_pricing_processed",
             "alphavantage_processed_kpi",
         ]
-        table_name = st.selectbox("Alphavantage-Tabelle", ALPHAVANTAGE_TABLES)
+        table_name = st.selectbox("Alphavantage table", ALPHAVANTAGE_TABLES)
     elif data_source == "User Tables":
         user_tables = list_user_tables()
         if user_tables:
             table_name = st.selectbox("User Table", user_tables)
         else:
-            st.warning("Keine Tabellen gefunden")
+            st.warning("No tables found")
             table_name = None
 
 # -----------------------------
-# Hauptbereich: Datenauswahl & Analyse
+# Main Area: Data Selection & Analysis
 # -----------------------------
 
-# Daten laden
-with st.spinner("Lade Daten..."):
+# Load data
+with st.spinner("Loading data..."):
     df = load_data_from_source(data_source, symbol=symbol, table_name=table_name)
 
 if df is None or df.empty:
-    st.warning("⚠️ Keine Daten geladen. Bitte wähle eine Datenquelle aus.")
+    st.warning("⚠️ No data loaded. Please select a data source.")
     st.stop()
 
-# Datenübersicht
-st.subheader("📊 Datenübersicht")
+# Data overview
+st.subheader("📊 Data Overview")
 
 c1, c2, c3 = st.columns(3)
 with c1:
-    st.metric("Zeilen", len(df))
+    st.metric("Rows", len(df))
 with c2:
-    st.metric("Spalten", df.shape[1])
+    st.metric("Columns", df.shape[1])
 with c3:
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    st.metric("Numerische Spalten", len(numeric_cols))
+    st.metric("Numeric Columns", len(numeric_cols))
 
-with st.expander("📋 DataFrame anzeigen", expanded=False):
+with st.expander("📋 Show DataFrame", expanded=False):
     st.dataframe(df.head(50), width="stretch")
 
-# Feature & Target Auswahl
+# Feature & Target Selection
 st.divider()
-st.subheader("🎯 Feature & Target Auswahl")
+st.subheader("🎯 Feature & Target Selection")
 
 all_cols = df.columns.tolist()
 
@@ -405,79 +404,79 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     feature_cols = st.multiselect(
-        "Feature-Spalten (X)",
+        "Feature columns (X)",
         options=all_cols,
         default=[c for c in numeric_cols if c != "target"][:5],
-        help="Wähle die Spalten, die als Input für die Analyse dienen sollen"
+        help="Select the columns that should serve as input for the analysis"
     )
 
 with col2:
     target_col = st.selectbox(
-        "Target-Spalte (y)",
+        "Target column (y)",
         options=all_cols,
-        help="Die Variable, die vorhergesagt werden soll"
+        help="The variable to be predicted"
     )
 
-# Vorhersage-Konfiguration
+# Prediction Configuration
 st.divider()
-st.subheader("🔮 Vorhersage-Konfiguration")
+st.subheader("🔮 Prediction Configuration")
 
 col_pred1, col_pred2 = st.columns(2)
 
 with col_pred1:
     prediction_type = st.selectbox(
-        "Vorhersagetyp",
+        "Prediction type",
         [
-            "Regression (Zahlenwert vorhersagen)",
-            "Klassifikation (Kategorie vorhersagen)",
-            "Trend-Analyse (Richtung vorhersagen)",
-            "Freie Analyse",
+            "Regression (predict numerical value)",
+            "Classification (predict category)",
+            "Trend Analysis (predict direction)",
+            "Free Analysis",
         ],
-        help="Wähle, welche Art von Analyse das LLM durchführen soll"
+        help="Choose what type of analysis the LLM should perform"
     )
 
 with col_pred2:
     sample_size = st.slider(
-        "Datensample-Größe",
+        "Data sample size",
         min_value=5,
         max_value=50,
         value=10,
-        help="Anzahl der letzten Zeilen, die ans LLM gesendet werden"
+        help="Number of last rows to be sent to the LLM"
     )
 
-# Benutzerdefinierter Prompt (optional)
-with st.expander("✏️ Benutzerdefinierten Prompt hinzufügen (optional)"):
+# Custom prompt (optional)
+with st.expander("✏️ Add custom prompt (optional)"):
     custom_prompt_addition = st.text_area(
-        "Zusätzliche Anweisungen für das LLM:",
-        placeholder="z.B.: Berücksichtige besonders makroökonomische Faktoren...",
+        "Additional instructions for the LLM:",
+        placeholder="e.g.: Pay special attention to macroeconomic factors...",
         height=100
     )
 
-# Generieren Button
+# Generate Button
 st.divider()
 
 if not feature_cols:
-    st.warning("⚠️ Bitte wähle mindestens eine Feature-Spalte aus.")
+    st.warning("⚠️ Please select at least one feature column.")
 elif not target_col:
-    st.warning("⚠️ Bitte wähle eine Target-Spalte aus.")
+    st.warning("⚠️ Please select a target column.")
 else:
-    if st.button("🪄 LLM-Analyse starten", type="primary", width="stretch"):
-        # Verbindung prüfen
+    if st.button("🪄 Start LLM Analysis", type="primary", width="stretch"):
+        # Check connection
         ok, msg = check_connection(base_url)
         if not ok:
-            st.error(f"❌ Kann nicht verbinden: {msg}")
+            st.error(f"❌ Cannot connect: {msg}")
             st.stop()
         
         st.success(msg)
         
-        # Modell laden
+        # Load model
         if auto_pull:
-            with st.status(f"Lade Modell '{model}'...", expanded=False) as status:
+            with st.status(f"Loading model '{model}'...", expanded=False) as status:
                 ensure_model(base_url, model, timeout=timeout_s)
-                status.update(label=f"✓ Modell '{model}' bereit", state="complete")
+                status.update(label=f"✓ Model '{model}' ready", state="complete")
         
-        # Prompt erstellen
-        with st.spinner("Erstelle Analyse-Prompt..."):
+        # Create prompt
+        with st.spinner("Creating analysis prompt..."):
             base_prompt = build_prediction_prompt(
                 prediction_type=prediction_type,
                 df=df,
@@ -487,40 +486,40 @@ else:
             )
             
             if custom_prompt_addition:
-                full_prompt = f"{base_prompt}\n\nZUSÄTZLICHE ANWEISUNGEN:\n{custom_prompt_addition}"
+                full_prompt = f"{base_prompt}\n\nADDITIONAL INSTRUCTIONS:\n{custom_prompt_addition}"
             else:
                 full_prompt = base_prompt
         
-        # Prompt anzeigen (optional)
-        with st.expander("📝 Generierter Prompt anzeigen"):
+        # Show prompt (optional)
+        with st.expander("📝 Show generated prompt"):
             st.code(full_prompt, language="text")
         
-        # Generieren
-        with st.status("🤖 LLM generiert Analyse...", expanded=True) as status:
+        # Generate
+        with st.status("🤖 LLM generating analysis...", expanded=True) as status:
             try:
                 t0 = time.time()
                 response = generate_once(base_url, model, full_prompt, timeout=timeout_s)
                 dt = time.time() - t0
                 
-                status.update(label=f"✓ Analyse abgeschlossen in {dt:.2f}s", state="complete")
+                status.update(label=f"✓ Analysis completed in {dt:.2f}s", state="complete")
                 
-                # Ergebnis anzeigen
+                # Display result
                 st.divider()
-                st.subheader("📊 LLM-Analyse Ergebnis")
+                st.subheader("📊 LLM Analysis Result")
                 st.markdown(response)
                 
-                # Metadaten
-                with st.expander("ℹ️ Analyse-Details"):
-                    st.write(f"**Modell:** {model}")
-                    st.write(f"**Vorhersagetyp:** {prediction_type}")
-                    st.write(f"**Datenquelle:** {data_source}")
+                # Metadata
+                with st.expander("ℹ️ Analysis Details"):
+                    st.write(f"**Model:** {model}")
+                    st.write(f"**Prediction type:** {prediction_type}")
+                    st.write(f"**Data source:** {data_source}")
                     st.write(f"**Features:** {', '.join(feature_cols)}")
                     st.write(f"**Target:** {target_col}")
-                    st.write(f"**Generierungszeit:** {dt:.2f}s")
-                    st.write(f"**Sample-Größe:** {sample_size} Zeilen")
+                    st.write(f"**Generation time:** {dt:.2f}s")
+                    st.write(f"**Sample size:** {sample_size} rows")
                 
             except requests.HTTPError as http_err:
-                st.error(f"❌ HTTP-Fehler: {http_err.response.status_code}")
+                st.error(f"❌ HTTP error: {http_err.response.status_code}")
                 st.code(http_err.response.text)
             except Exception as e:
-                st.error(f"❌ Fehler bei der Generierung: {e}")
+                st.error(f"❌ Error during generation: {e}")
