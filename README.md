@@ -569,7 +569,7 @@ Die Plattform folgt einer **Drei-Schichten-Architektur**. Diese Architekturentsc
 │  │   API Services (yf_connect, av_connect, ollama)  │   │
 │  └──────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │   Data Processing (alphavantage_processing)      │   │
+│  │   Data Processing (alphavantage_processed)       │   │
 │  └──────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │   Database Layer (db_functions, users_database)  │   │
@@ -634,7 +634,7 @@ PRAXISP_SOURCE/
 │   │   │   ├── av_connect.py
 │   │   │   └── ollama_connect.py
 │   │   ├── data_processing/       # ETL-Pipeline
-│   │   │   └── alphavantage_processing.py
+│   │   │   └── alphavantage_processed.py
 │   │   ├── database/              # Datenzugriffsschicht
 │   │   │   ├── db_functions.py
 │   │   │   ├── database_utils.py
@@ -842,7 +842,7 @@ Alle Funktionen verwenden standardmäßig `auto_adjust=True`, um automatisch fü
 
 #### 4.2.3.1 Alpha Vantage Processing
 
-Die Verarbeitung der Alpha Vantage-Rohdaten erfolgt durch das Modul [`alphavantage_processing.py`](src/backend/data_processing/alphavantage_processing.py) und implementiert eine einfache **ETL-Pipeline** (Extract, Transform, Load).
+Die Verarbeitung der Alpha Vantage-Rohdaten erfolgt durch das Modul [`alphavantage_processed.py`](src/backend/data_processing/alphavantage_processed.py) und implementiert eine einfache **ETL-Pipeline** (Extract, Transform, Load).
 
 **Extract-Phase:**
 Rohdaten werden aus `alphavantage.db` extrahiert:
@@ -864,9 +864,9 @@ Die aktuelle Implementierung ist bewusst generisch gehalten und kann um weitere 
 
 **Frontend-Zugriffsfunktionen:**
 Das Modul stellt Hilfsfunktionen für Frontend-Abfragen bereit:
-- [`get_unique_symbols_from_table()`](src/backend/data_processing/alphavantage_processing.py): Liefert verfügbare Symbole
-- [`get_processed_entries_by_symbol()`](src/backend/data_processing/alphavantage_processing.py): Filtert Daten nach Symbol
-- [`get_processed_table()`](src/backend/data_processing/alphavantage_processing.py): Lädt komplette Tabelle
+- [`get_unique_symbols_from_table()`](src/backend/data_processing/alphavantage_processed.py): Liefert verfügbare Symbole
+- [`get_processed_entries_by_symbol()`](src/backend/data_processing/alphavantage_processed.py): Filtert Daten nach Symbol
+- [`get_processed_table()`](src/backend/data_processing/alphavantage_processed.py): Lädt komplette Tabelle
 
 #### 4.2.3.2 Daten-Update-Orchestrierung (scheduler.py)
 
@@ -881,7 +881,7 @@ Das Modul [`scheduler.py`](src/backend/scheduler.py) fungiert als zentraler Orch
   2. API-Call für Pricing-Daten via [`av_connect.py`](src/backend/api_services/av_connect.py)
   3. API-Call für KPI-Daten via [`av_connect.py`](src/backend/api_services/av_connect.py)
   4. Speicherung in Rohdatenbank
-  5. Trigger der Processing-Pipeline via [`alphavantage_processing.py`](src/backend/data_processing/alphavantage_processing.py)
+  5. Trigger der Processing-Pipeline via [`alphavantage_processed.py`](src/backend/data_processing/alphavantage_processed.py)
   6. Aktualisierung des Last-Update-Timestamps in `system_config.db`
 - Logging: Backend-Protokollierung von Erfolg/Fehler pro Symbol
 - Error Handling: Fehler bei einzelnen Symbolen brechen Gesamtprozess nicht ab (Robustheit)
