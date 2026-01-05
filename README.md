@@ -2166,6 +2166,368 @@ Zur konsistenten Referenzierung im Bericht empfiehlt sich ein Ordner, z.B.:
 `src/frontend/st/assets/figures/` oder `report_assets/figures/`  
 und ein fortlaufendes Abbildungsnummern-Schema.
 
+# 6. Diskussion
+
+Dieses Kapitel reflektiert die erzielten Resultate des Praxisprojekts „FinSight" vor dem Hintergrund der initialen Zielsetzung und ordnet die realisierten Funktionalitäten kritisch ein. Im Fokus stehen dabei sowohl die erfolgreiche Erfüllung der Kernanforderungen als auch die identifizierten Limitationen, die die Qualität, Skalierbarkeit und fachliche Validität der Anwendung beeinflussen. Die Diskussion gliedert sich in zwei Hauptabschnitte: die Interpretation der Resultate im Kontext der Projektziele (6.1) sowie die systematische Analyse von Threats to Validity, d.h. den Faktoren, die die Aussagekraft und Verlässlichkeit der Ergebnisse einschränken (6.2).
+
+---
+
+## 6.1 Interpretation der Resultate: Zielerreichung und Funktionsumfang
+
+### 6.1.1 Übergeordnetes Projektziel
+
+Das Praxisprojekt verfolgte das Ziel, eine **integrierte, anwenderfreundliche Plattform für Finanzanalyse, Machine Learning und LLM-basierte Insights** zu entwickeln. Die Anwendung sollte sowohl explorative Datenanalyse als auch experimentelle Modellierung ermöglichen und dabei technisch weniger versierte Nutzer nicht ausschließen. Gleichzeitig sollten fortgeschrittene Anwender über Konfigurationsmöglichkeiten und flexible Datenquellen-Integration experimentelle Workflows realisieren können.
+
+### 6.1.2 Erreichte Kernergebnisse
+
+**1. Datenintegration und -verwaltung**
+
+Die Anwendung integriert erfolgreich mehrere heterogene Datenquellen (Yahoo Finance, Alpha Vantage, User-Uploads) in eine einheitliche SQLite-basierte Datenhaltung. Die automatische Typ-Konvertierung (numerische Erkennung, Datums-Parsing) reduziert manuelle Fehlerquellen und ermöglicht robuste Verarbeitung unterschiedlich formatierter Daten. Die Persistierung nutzereigener Tabellen samt Konfliktstrategien (Fail/Replace/Append) stellt ein wesentliches Unterscheidungsmerkmal zu rein Cloud-basierten oder API-abhängigen Lösungen dar.
+
+**Bewertung:** Die Datenintegration erfüllt die Anforderungen vollständig. Die Kombination aus vorbefüllten Datenbanken und flexiblem Upload bietet sowohl Einsteigerfreundlichkeit (sofort nutzbare Daten) als auch Erweiterbarkeit (eigene Datensätze).
+
+**2. Interaktive Exploration und Vergleichsanalyse**
+
+Das Data-Dashboard ermöglicht die gezielte Analyse einzelner Symbole mit umfassenden Kennzahlen (Fundamentaldaten, Kursverläufe, technische Indikatoren). Die Vergleichsanalyse mehrerer Aktien in einem gemeinsamen Chart inkl. optionaler Normalisierung schafft einen echten Dashboard-Charakter. Die Datenbankübersicht als Transparenz-Ansicht unterstützt Debugging und Datenqualitätskontrolle.
+
+**Bewertung:** Die explorative Funktionalität erreicht das Ziel einer niedrigschwelligen, visuell orientierten Analyse. Die Kombination aus Einzelanalyse und Multi-Ticker-Vergleich deckt typische Anwendungsfälle (Portfolio-Vergleich, Sektor-Analyse) ab.
+
+**3. Machine Learning Studio als experimentelle Trainingsumgebung**
+
+Das ML Studio überführt klassische scikit-learn Workflows in eine GUI-gestützte Umgebung. Die Unterstützung von Regression und Klassifikation, konfigurierbarem Train/Test-Split, Feature-Scaling sowie Zeitreihenmodus (Lag-Features) und Prognosehorizont (Future Target Shift) adressiert zentrale Anforderungen im Finanzkontext. Die persistente Speicherung trainierter Modelle inkl. Metadaten ermöglicht Reproduzierbarkeit und Wiederverwendung.
+
+**Bewertung:** Das ML Studio erfüllt seine Rolle als experimentelle Trainingsumgebung. Es ist klar positioniert als „Playground" für schnelle Baselines, nicht als produktionsreifes AutoML-System. Die Funktionalität ist für Prototyping und Lehrzwecke angemessen, erreicht jedoch bewusst nicht die Tiefe spezialisierter ML-Plattformen (kein Hyperparameter-Tuning, keine Cross-Validation).
+
+**4. LLM Playground als intelligente Analyseschicht**
+
+Die Integration von Ollama ermöglicht datenbasierte Analysen durch Large Language Models ohne Cloud-Abhängigkeit. Die strukturierten Analysemodi (Regression, Classification, Trend, Free Analysis) übersetzen typische analytische Fragestellungen in Prompt-Templates, ohne dass Nutzer Prompt-Engineering beherrschen müssen. Die Transparenz durch Prompt-Einsicht und detaillierte Metadaten (Modell, Features, Antwortzeit) fördert Nachvollziehbarkeit.
+
+**Bewertung:** Der LLM Playground stellt einen innovativen Mehrwert dar, der über klassische Datenanalyse hinausgeht. Die lokale Ausführung adressiert Datenschutzbedenken, die bei Cloud-LLMs bestehen würden. Die automatische Prompt-Generierung senkt die Einstiegshürde erheblich. Jedoch bleibt die Analyse qualitativ und nicht deterministisch – sie ergänzt, ersetzt aber nicht quantitative Methoden.
+
+**5. Assistant als niedrigschwellige Nutzerunterstützung**
+
+Der chatbasierte Assistant bietet kontextuelle Hilfe zur Anwendung. Dies reduziert Onboarding-Zeit und adressiert typische Nutzerfragen ohne externe Dokumentation.
+
+**Bewertung:** Der Assistant erfüllt seine Rolle als Hilfsmodul. Die Effektivität hängt stark vom gewählten Modell ab; kleinere Modelle können bei komplexen Fragen limitiert sein.
+
+**6. Settings als Wartbarkeits- und Steuerungsschicht**
+
+Die zentrale Konfiguration von Ticker-Listen, Training-Limits, Ollama-Quellen und Modellverwaltung macht die Anwendung anpassbar und reduziert Hardcoding. Die sicherheitsorientierte Behandlung sensibler Keys (Alpha Vantage nur Session-basiert) folgt Best Practices.
+
+**Bewertung:** Die Settings-Seite trägt wesentlich zur langfristigen Nutzbarkeit bei. Sie ermöglicht Anpassungen ohne Code-Änderungen und unterstützt verschiedene Deployment-Szenarien (lokal, containerisiert).
+
+### 6.1.3 Gesamtbewertung der Zielerreichung
+
+Das Projektziel wurde in seinen Kernaspekten **erfolgreich erreicht**:
+
+- Eine lauffähige, mehrseitige Streamlit-Anwendung wurde entwickelt
+- Datenintegration, Exploration, ML-Training und LLM-Analyse funktionieren im Zusammenspiel
+- Die Anwendung ist sowohl für Einsteiger (Setup-Hilfen, vorbefüllte Daten) als auch für fortgeschrittene Nutzer (flexible Konfiguration) geeignet
+- Die lokale Betriebsfähigkeit (ohne Cloud-Abhängigkeit) wurde realisiert
+- Die Drei-Schichten-Architektur ermöglicht Wartbarkeit und Erweiterbarkeit
+
+Die Anwendung ist als **funktionsfähiger Prototyp mit ausgeprägtem Dashboard-Charakter** zu bewerten. Sie demonstriert die Integration heterogener Technologien (SQLite, scikit-learn, Ollama) in einem kohärenten User Experience. Gleichzeitig ist sie bewusst als experimentelle Umgebung konzipiert, nicht als produktionsreifes System für den Echtzeit-Handel oder regulierte Finanzdienstleistungen.
+
+### 6.1.4 Abgrenzung zu kommerziellen Lösungen
+
+Im Vergleich zu kommerziellen Finanzplattformen (z.B. Bloomberg Terminal, FactSet, spezialisierte Robo-Advisors) liegt die Stärke von FinSight in:
+
+- **Transparenz:** Open-Source-Charakter, einsehbare Datenquellen und Modelllogik
+- **Flexibilität:** Erweiterbarkeit durch User-Uploads und offene Architektur
+- **Datenschutz:** Lokale Ausführung ohne Cloud-Übermittlung sensibler Daten
+- **Bildungscharakter:** Geeignet für Lehre, Prototyping und explorative Analysen
+
+Die Schwächen liegen in:
+
+- **Datentiefe:** Keine Echtzeit-Marktdaten, begrenzte Fundamentaldaten
+- **Modellqualität:** Keine professionellen Backtesting-Frameworks oder Risikomanagement-Module
+- **Skalierung:** Nicht für Millionen von Transaktionen oder High-Frequency-Trading ausgelegt
+
+Diese Abgrenzung ist intentional: FinSight adressiert Bildungs-, Forschungs- und Prototyping-Szenarien, nicht den professionellen Trading-Betrieb.
+
+---
+
+## 6.2 Threats to Validity: Limitationen und Einschränkungen
+
+Dieser Abschnitt analysiert systematisch Faktoren, die die Qualität, Validität und Verlässlichkeit der Anwendung einschränken. Die Threats to Validity werden in fünf Kategorien strukturiert: (1) Datenqualität und -verfügbarkeit, (2) Machine Learning Methodik, (3) LLM-Integration, (4) Performance und Skalierbarkeit sowie (5) Usability und Fehleranfälligkeit.
+
+### 6.2.1 Datenqualität und -verfügbarkeit
+
+**1. API-Limitierungen (Alpha Vantage)**
+
+Alpha Vantage unterliegt Requests-Limits (typischerweise 5 API-Calls pro Minute für kostenlose API-Keys, 500 Calls pro Tag). Dies beeinflusst Download-Workflows erheblich:
+
+- Aktualisierung großer Ticker-Listen (400+ Symbole) erfordert mehrere Tage
+- Wiederholte Fehler bei Rate-Limit-Überschreitung können zu unvollständigen Datenbeständen führen
+- Keine Echtzeit-Daten, typische Verzögerung von 15 Minuten bis mehreren Stunden
+
+**Implikation:** Die Anwendung ist für Analysen mit zeitlicher Verzögerung geeignet, nicht für Day-Trading oder zeitkritische Entscheidungen.
+
+**2. Datenqualität und fehlende Werte**
+
+Sowohl Yahoo Finance als auch Alpha Vantage weisen Datenlücken auf:
+
+- Delisting von Symbolen führt zu unvollständigen Zeitreihen
+- Fehlende Fundamentaldaten bei kleineren Unternehmen
+- Historische Daten teilweise inkonsistent (Splits, Dividenden nicht immer korrekt adjustiert)
+
+Die automatische NaN-Entfernung im ML-Workflow kann bei vielen fehlenden Werten zu einer starken Reduktion der Trainingsdaten führen. In Extremfällen bleiben nach Preprocessing nur wenige Zeilen übrig, was Training unmöglich macht oder zu Overfitting führt.
+
+**Implikation:** Nutzer müssen Datenqualität manuell prüfen; die Anwendung bietet keine automatische Qualitätsbewertung oder Imputations-Strategien.
+
+**3. Begrenzter Abdeckungsgrad**
+
+Die initiale Ticker-Liste umfasst ca. 400 US-Aktien. Internationale Märkte, Kryptowährungen, Derivate oder alternative Assets sind nicht abgedeckt.
+
+**Implikation:** Die Anwendung ist auf US-Equities fokussiert; Diversifikationsanalysen über Asset-Klassen hinweg sind nicht möglich.
+
+### 6.2.2 Machine Learning Methodik
+
+**1. Fehlende Hyperparameter-Optimierung**
+
+Alle Modelle werden mit Standard-Settings trainiert (z.B. Random Forest mit fixen `n_estimators=100`). Es erfolgt kein automatisches Tuning über Grid Search, Random Search oder Bayesian Optimization.
+
+**Implikation:** Modellperformance ist suboptimal; Nutzer ohne ML-Expertise können nicht beurteilen, ob bessere Hyperparameter existieren.
+
+**2. Kein Cross-Validation**
+
+Aktuell erfolgt nur ein einzelner Train/Test-Split. Die Modellgüte hängt damit stark vom zufälligen Split ab. Bei kleinen Datensätzen oder ungleicher Klassenverteilung können Metriken stark variieren.
+
+**Implikation:** R² oder Accuracy sind mit Vorsicht zu interpretieren; sie können je nach Split-Zufall über- oder unterschätzt sein.
+
+**3. Vereinfachte Zeitreihen-Validierung**
+
+Der Zeitreihenmodus verhindert Shuffle im Train/Test-Split, implementiert aber kein Walk-Forward-Testing oder Rolling-Window-Validation. Dies ist problematisch, da:
+
+- Modelle auf zukünftige Daten trainiert werden könnten (wenn Daten nicht chronologisch sortiert sind)
+- Keine Simulation realistischer Prognose-Szenarien (z.B. Rolling 1-Month-Forecasts)
+
+**Implikation:** Zeitreihenmodelle sind als explorative Baselines zu verstehen, nicht als robuste Forecasting-Systeme.
+
+**4. Daten-Leakage-Risiko**
+
+Die Anwendung warnt bei offensichtlichem Leakage (Target in Features ohne Time-Series-Mode), kann jedoch komplexere Formen nicht erkennen:
+
+- Forward-Looking Features (z.B. zukünftige Earnings-Announcements)
+- Indirekte Leakage über korrelierte Features
+- Pre-Processing-Leakage (z.B. Scaler auf gesamten Datensatz statt nur auf Train-Set)
+
+**Implikation:** Nutzer tragen die Verantwortung für saubere Feature-Engineering; die Anwendung bietet keine vollständige Leakage-Detektion.
+
+**5. Feature-Explosion bei One-Hot-Encoding**
+
+Kategorische Features mit vielen Kategorien (z.B. Branche, Land) werden per One-Hot-Encoding kodiert. Dies kann zu:
+
+- Sehr breiten, sparsamen Feature-Matrizen führen
+- Curse of Dimensionality bei kleinen Trainingsdatensätzen
+- Erhöhtem Memory-Bedarf und Trainingszeit
+
+**Implikation:** Bei hochdimensionalen kategorialen Features sollten alternative Encodings (Target Encoding, Embeddings) erwogen werden, die aktuell nicht implementiert sind.
+
+**6. Keine Modellinterpretierbarkeit**
+
+Abgesehen von R² und Accuracy werden keine Interpretations-Tools bereitgestellt:
+
+- Keine Feature Importance (trotz Verfügbarkeit bei Tree-basierten Modellen)
+- Keine SHAP-Values oder Partial Dependence Plots
+- Keine Residualanalyse
+
+**Implikation:** Nutzer können nicht verstehen, welche Features Vorhersagen dominieren; dies erschwert fachliche Validierung und Debugging.
+
+### 6.2.3 LLM-Integration
+
+**1. Modellabhängige Qualität**
+
+Die Qualität der LLM-Analysen hängt kritisch vom gewählten Ollama-Modell ab:
+
+- Kleinere Modelle (<7B Parameter, z.B. `phi3:mini`) zeigen begrenzte Reasoning-Fähigkeiten bei komplexen Finanzanalysen
+- Größere Modelle (>13B Parameter) erfordern erhebliche Hardware-Ressourcen (>16 GB RAM, idealerweise GPU)
+- Fachspezifisches Wissen (Finanzterminologie, Kennzahlen-Interpretation) variiert stark zwischen Modellen
+
+**Implikation:** Die Anwendung delegiert Modellwahl an Nutzer; es erfolgt keine automatische Modellempfehlung basierend auf Aufgabenkomplexität.
+
+**2. Keine Validierung der LLM-Ausgaben**
+
+LLM-Antworten werden nicht auf Plausibilität, Struktur oder Halluzinationen geprüft:
+
+- Numerische Vorhersagen können außerhalb plausibler Bereiche liegen
+- Klassifikationen können nicht-existente Kategorien nennen
+- Begründungen können faktisch inkorrekt sein (z.B. falsche Kennzahlen-Definitionen)
+
+**Implikation:** LLM-Analysen sind als Hypothesen zu behandeln, nicht als verifizierte Fakten. Nutzer müssen Ergebnisse kritisch hinterfragen.
+
+**3. Limitierte Kontextlänge**
+
+Durch die konfigurierbare Sample-Größe (max. 50 Zeilen) wird nur ein Ausschnitt der Daten an das LLM übergeben. Bei langen Zeitreihen (z.B. tägliche Daten über 10 Jahre = 2500+ Zeilen) gehen Informationen verloren:
+
+- Langfristige Trends werden nicht erfasst
+- Saisonalität über mehrere Jahre nicht erkennbar
+- Strukturbrüche außerhalb des Samples bleiben unberücksichtigt
+
+**Implikation:** LLM-Analysen fokussieren auf kurzfristige Muster; für langfristige Strategien sind dedizierte statistische Methoden vorzuziehen.
+
+**4. Keine historische Speicherung**
+
+Generierte Analysen werden nicht persistent gespeichert. Bei wiederholter Anfrage mit denselben Parametern wird eine neue Analyse generiert, die aufgrund der Nicht-Determiniertheit von LLMs abweichen kann.
+
+**Implikation:** Keine Reproduzierbarkeit von LLM-Analysen; keine Möglichkeit, frühere Insights nachzuschlagen oder Versionsvergleiche durchzuführen.
+
+**5. Kein Multi-Turn-Dialog**
+
+Der LLM Playground sendet pro Anfrage einen isolierten Prompt ohne Kontext-Carry-over. Dies verhindert:
+
+- Nachfragen zu generierten Analysen
+- Iterative Verfeinerung von Vorhersagen
+- Vergleichende Diskussion mehrerer Szenarien
+
+**Implikation:** Interaktion ist eingeschränkt auf "One-Shot"-Analysen; für explorative Dialoge ist der Assistant besser geeignet, der jedoch nicht auf spezifische Daten zugreift.
+
+**6. Prompt-Engineering manuell**
+
+Die automatisch generierten Prompts sind generisch. Für spezialisierte Anwendungsfälle (z.B. ESG-Analyse, Merger-Bewertung, Sektor-Rotation) sind manuelle Anpassungen nötig.
+
+**Implikation:** Fortgeschrittene Nutzer müssen Custom Prompts formulieren; die Anwendung bietet keine Bibliothek spezialisierter Prompt-Templates.
+
+**7. Sprachabhängigkeit**
+
+Die Prompts sind primär auf Englisch ausgelegt. Deutschsprachige Modelle oder Antworten erfordern ggf. Anpassungen der Prompt-Templates.
+
+**Implikation:** Internationale Nutzer müssen entweder englischsprachige Modelle verwenden oder Prompts manuell übersetzen.
+
+### 6.2.4 Performance und Skalierbarkeit
+
+**1. Große Tabellen verursachen Ladezeiten**
+
+Das vollständige Laden von Tabellen mit mehreren Millionen Zeilen (z.B. Intraday-Daten über mehrere Jahre) führt zu:
+
+- Hohem Memory-Verbrauch (mehrere GB RAM)
+- Langsamen DataFrame-Operationen (Filter, Joins, Aggregationen)
+- Verzögerungen in der UI (Streamlit re-rendert bei jeder Interaktion)
+
+Die Sicherheitslimits (z.B. max. 100.000 Trainingszeilen) begrenzen zwar den Worst-Case, verhindern aber nicht die initiale Ladezeit.
+
+**Implikation:** Bei sehr großen Datensätzen sollten Nutzer Daten vorab filtern oder aggregieren; die Anwendung bietet keine automatische Lazy-Loading oder Sampling-Strategie.
+
+**2. Keine Parallelisierung**
+
+Datenaktualisierungen (Yahoo Finance, Alpha Vantage) erfolgen sequenziell. Bei 400+ Symbolen und Rate-Limits führt dies zu sehr langen Update-Zeiten (mehrere Stunden bis Tage).
+
+**Implikation:** Updates sollten nächtlich oder über mehrere Tage verteilt geplant werden; die Anwendung ist nicht für Ad-hoc-Vollaktualisierungen ausgelegt.
+
+**3. Ressourcenabhängigkeit bei LLMs**
+
+Ollama-Modelle benötigen erhebliche Ressourcen:
+
+- Kleinere Modelle (3-7B Parameter): 4-8 GB RAM
+- Mittlere Modelle (13-30B Parameter): 16-32 GB RAM
+- Große Modelle (70B+ Parameter): 64+ GB RAM oder Multi-GPU-Setup
+
+Bei unzureichender Hardware treten auf:
+
+- Timeouts bei Model-Loading
+- Out-of-Memory-Fehler während Inference
+- Sehr lange Antwortzeiten (mehrere Minuten)
+
+**Implikation:** Die Anwendung setzt dedizierte Hardware voraus; auf Standard-Laptops ist nur die Nutzung kleiner Modelle praktikabel.
+
+**4. Keine Echtzeitverarbeitung**
+
+Streaming-Responses von Ollama werden nicht unterstützt (Parameter `stream=False`). Bei großen Antworten (mehrere Absätze) führt dies zu:
+
+- Wartezeiten ohne Feedback (Nutzer sieht "Loading...")
+- Ungeduld und Abbruch-Risiko
+- Schlechtere User Experience im Vergleich zu Streaming-Interfaces (z.B. ChatGPT)
+
+**Implikation:** Für bessere UX sollte Streaming implementiert werden; dies erfordert jedoch Refactoring der LLM-Kommunikation.
+
+### 6.2.5 Usability und Fehleranfälligkeit
+
+**1. Begrenzte Fehlermeldungen**
+
+Bei Fehlern (z.B. leere Datenquelle, inkompatible Features, LLM-Timeout) werden generische Fehlermeldungen angezeigt. Nutzer ohne technisches Verständnis können Ursachen oft nicht identifizieren.
+
+**Implikation:** Bessere Error-Handling und nutzerfreundliche Fehlermeldungen würden Debugging erleichtern.
+
+**2. Keine Undo/Redo-Funktionalität**
+
+Versehentliche Löschungen (z.B. User-Tabellen, gespeicherte Modelle) sind irreversibel. Es existiert keine Versionierung oder Backup-Mechanismus.
+
+**Implikation:** Kritische Operationen sollten zusätzliche Sicherheitsabfragen haben; ein Backup-System wäre wünschenswert.
+
+**3. Session-State-Persistenz**
+
+Streamlit Session State ist nicht persistent über App-Restarts hinweg. Konfigurationen (z.B. Ollama-Quelle, ausgewählte Ticker) gehen bei Neustart verloren, sofern nicht in `system_config.json` gespeichert.
+
+**Implikation:** Nutzer müssen häufig genutzte Einstellungen wiederholt eingeben; eine vollständige Persistenz würde UX verbessern.
+
+**4. Begrenzte Dokumentation in-App**
+
+Abgesehen vom Assistant gibt es keine kontextuelle Hilfe (z.B. Tooltips, Inline-Dokumentation) für komplexe Funktionen wie Forecast Horizon oder Lag-Features.
+
+**Implikation:** Nutzer sind auf externe Dokumentation oder Trial-and-Error angewiesen; dies erhöht die Einstiegshürde.
+
+### 6.2.6 Zusammenfassung der Threats to Validity
+
+Die identifizierten Limitationen lassen sich wie folgt priorisieren:
+
+**Kritische Threats (hoher Einfluss auf Validität):**
+- Fehlende Cross-Validation und Hyperparameter-Tuning (ML-Ergebnisse nicht robust)
+- Keine LLM-Ausgaben-Validierung (Halluzinationen möglich)
+- Daten-Leakage-Risiko (fachliche Validität gefährdet)
+- API-Limitierungen (Datenaktualität eingeschränkt)
+
+**Moderate Threats (mittlerer Einfluss):**
+- Vereinfachte Zeitreihen-Validierung (Prognosequalität limitiert)
+- Limitierte Kontextlänge bei LLMs (Langfrist-Trends nicht erfasst)
+- Performance-Probleme bei großen Datensätzen (Usability beeinträchtigt)
+- Ressourcenabhängigkeit bei LLMs (Hardware-Anforderungen hoch)
+
+**Geringe Threats (niedriger Einfluss):**
+- Keine Modellinterpretierbarkeit (wünschenswert, aber nicht kritisch für Prototyp)
+- Keine historische Speicherung von LLM-Analysen (Nice-to-have)
+- Begrenzte Fehlermeldungen (UX-Verbesserung möglich)
+- Sprachabhängigkeit (durch Prompt-Anpassung adressierbar)
+
+Diese Priorisierung zeigt, dass die kritischsten Limitationen methodischer Natur sind (ML-Validierung, LLM-Verlässlichkeit) und nicht primär technischer Art. Dies unterstreicht den experimentellen Charakter der Anwendung: Sie ist geeignet für Exploration und Prototyping, erfordert aber kritische Interpretation der Ergebnisse.
+
+---
+
+## 6.3 Ausblick und Verbesserungspotenziale
+
+Basierend auf den identifizierten Threats ergeben sich folgende prioritäre Verbesserungsansätze:
+
+**Kurzfristig (Prototyp → MVP):**
+- Implementierung von Cross-Validation und einfachem Hyperparameter-Tuning (z.B. RandomizedSearchCV)
+- Feature Importance Visualisierung für Tree-basierte Modelle
+- Bessere Fehlermeldungen und Input-Validierung
+- Streaming-Responses für LLM-Ausgaben
+
+**Mittelfristig (MVP → Produktiv):**
+- Professionelles Backtesting-Framework für Zeitreihen (Walk-Forward-Testing)
+- LLM-Ausgaben-Validierung (Plausibilitätsprüfungen, Strukturerkennung)
+- Datenqualitäts-Dashboard (Missing Values, Outliers, Distributions)
+- Parallelisierung von Datenaktualisierungen
+
+**Langfristig (Produktiv → Advanced):**
+- Integration weiterer Datenquellen (Echtzeit-Feeds, alternative Daten)
+- Fortgeschrittene Feature-Engineering-Pipeline (Embeddings, Target Encoding)
+- Multi-Turn-Dialog für LLM Playground mit Kontext-Speicherung
+- Deployment als Cloud-Service mit Multi-User-Support
+
+Diese Roadmap verdeutlicht, dass die Anwendung ein solides Fundament bietet, das systematisch zu einem produktionsreifen System ausgebaut werden kann.
+
+---
+
+## 6.4 Fazit der Diskussion
+
+Das Praxisprojekt „FinSight" erreicht seine Kernziele als experimentelle Plattform für Finanzanalyse, Machine Learning und LLM-Integration. Die Anwendung demonstriert erfolgreich die Integration heterogener Technologien in einem kohärenten Dashboard-Konzept und bietet sowohl Einsteigern als auch fortgeschrittenen Nutzern einen funktionalen Werkzeugkasten.
+
+Gleichzeitig offenbart die kritische Analyse substantielle Limitationen, insbesondere in Bezug auf ML-Methodik (fehlende Validierung, Hyperparameter-Tuning) und LLM-Verlässlichkeit (Halluzinationen, limitierte Kontextlänge). Diese Threats to Validity sind jedoch kein Scheitern, sondern charakteristisch für den Prototyp-Status und die bewusste Fokussierung auf Exploration statt Produktion.
+
+Die Anwendung erfüllt ihren Zweck als Bildungs-, Forschungs- und Prototyping-Tool. Sie ist **nicht geeignet** für Echtzeit-Trading, regulierte Finanzdienstleistungen oder kritische Investitionsentscheidungen ohne zusätzliche Validierung. Sie ist **gut geeignet** für explorative Datenanalyse, Modell-Baselines, LLM-Experimente und als Ausgangspunkt für spezialisierte Erweiterungen.
+
+Insgesamt stellt FinSight einen erfolgreichen Proof-of-Concept dar, der zeigt, wie moderne Technologien (Streamlit, scikit-learn, Ollama) zu einer integrierten Finanzanalyse-Plattform kombiniert werden können – mit klarem Bewusstsein für die bestehenden Grenzen und dem Potenzial für zukünftige Verbesserungen.
+
 
 
 ## Literatur:
