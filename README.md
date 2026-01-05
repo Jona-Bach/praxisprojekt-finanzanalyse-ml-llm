@@ -1548,6 +1548,354 @@ Dies reduziert Code-Duplikation und vereinfacht Wartung (Änderungen nur an eine
 
 ---
 
+# 5. Resultate (Dashboard)
+
+Dieses Kapitel beschreibt die sichtbaren Ergebnisse des Praxisprojekts „FinSight“ aus Sicht der Nutzerinnen und Nutzer. Im Fokus stehen das entstandene Streamlit-Dashboard, die Interaktionslogik, der typische User Flow sowie die wahrnehmbare Qualität (Usability, Stabilität, Performance). Ergänzend werden die wichtigsten Seiten und Funktionen anhand der realisierten UI-Struktur eingeordnet und mit Abbildungen (als Platzhalter) dokumentiert.  
+
+Die in Kapitel 4 beschriebene technische Architektur (Drei-Schichten-Architektur, SQLite-Datenhaltung, modulare Backend-Services) spiegelt sich im Dashboard als klar strukturiertes, mehrseitiges Anwendungskonzept wider. Die App ist so gestaltet, dass Nutzer ohne tiefes Data-Science- oder Programmierwissen Daten explorieren, Modelle trainieren und LLM-basierte Analysen durchführen können, während fortgeschrittene Nutzer über flexible Auswahlmechanismen (Datenquellen, Features/Targets, Modellparameter) experimentelle Workflows realisieren können.
+
+---
+
+## 5.1 Ergebnisübersicht: Was ist entstanden?
+
+Als Resultat wurde eine lauffähige Streamlit-Anwendung entwickelt, die folgende Kernziele erfüllt:
+
+1. **Datenbereitstellung und -verwaltung**
+   - Nutzung bereits vorbefüllter Datenbanken (Yahoo Finance, Alpha Vantage raw/processed)
+   - Upload und Persistierung nutzereigener Tabellen (CSV/Excel) in `users_database.db`
+   - Aktualisierungs- und Download-Funktionen für Kurs- und KPI-Daten
+
+2. **Interaktive Datenanalyse**
+   - Analyse einzelner Symbole inkl. Kennzahlen und Zeitreihenvisualisierung
+   - Vergleichsanalyse mehrerer Aktien über ein gemeinsames Chart
+   - Datenbankübersichten als Transparenz- und Debugging-Ansicht (Tabellen/Zeilen)
+
+3. **Machine Learning Studio**
+   - Training vordefinierter scikit-learn Modelle (Regression & Klassifikation)
+   - Konfigurierbarer Train/Test-Split, optionales Feature-Scaling
+   - Zeitreihenmodus (Lag-Features) und Prognosehorizont (Future Target Shift)
+   - Automatische Speicherung trainierter Modelle inkl. Metadaten als `.pkl`
+
+4. **LLM Playground**
+   - Datenbasierte Analyse per lokal ausgeführtem LLM (Ollama)
+   - Verschiedene Analysemodi (Regression, Classification, Trend, Free Analysis)
+   - Konfigurierbare Sample Size und Custom Prompt
+   - Einsicht in den generierten Prompt (Transparenz)
+
+5. **Assistant**
+   - Chatbasierter Hilfsassistent zur Unterstützung bei Nutzung und Interpretation
+   - Modell konfigurierbar, Fokus auf niedrigschwelliger Benutzerhilfe
+
+6. **Settings**
+   - Persistente Konfiguration (Ticker-Liste, Training-Limits, Ollama-Quelle, Modellverwaltung)
+   - Verwaltung gespeicherter Modelle (Löschen, Überblick über Dateigrößen)
+   - Sicherheitsorientierte Behandlung sensibler Keys (Alpha Vantage Key nur Session)
+
+---
+
+## 5.2 Nutzererlebnis: Einstieg und typischer User Flow
+
+Aus Anwendersicht ist FinSight als Multi-Page-Dashboard konzipiert. Der Einstieg erfolgt über die **Startseite** (`Start.py`), welche eine strukturierte Orientierung bietet und gleichzeitig notwendige Setup-Schritte zentralisiert.
+
+### 5.2.1 Erster Einstieg (Onboarding)
+
+Beim ersten Start wird der Nutzer in der Regel über folgende Reihenfolge geführt:
+
+1. **Welcome**: Kurzüberblick über Ziele und Funktionsumfang  
+2. **Setup**: Hinweise zur Bedienung, Konfiguration von:
+   - Alpha-Vantage API-Key (für bestimmte Downloads)
+   - Ollama-Verbindung (local/host/container)
+   - ggf. Standardmodelle für Assistant/LLM Playground
+
+Dieser Flow reduziert Einstiegsbarrieren und adressiert typische Probleme bei daten- und modellgetriebenen Anwendungen: fehlende Keys, fehlende LLM-Verbindung oder unklare Datenquellen.
+
+**Link (Code):**  
+- Startseite: [`src/frontend/st/Start.py`](src/frontend/st/Start.py)
+
+---
+
+## 5.3 Dashboard-Struktur: Seiten und Interaktionsprinzipien
+
+Die UI ist in funktionale Bereiche aufgeteilt, die den Arbeitsprozess abbilden: **Daten → Modellierung → LLM → Assistance → Konfiguration**. Die Navigation erfolgt über Streamlit-Seiten im Ordner `pages/`.
+
+**Übersicht (Code):**
+- [`src/frontend/st/pages/1 Data.py`](src/frontend/st/pages/1%20Data.py)  
+- [`src/frontend/st/pages/2 Machine Learning.py`](src/frontend/st/pages/2%20Machine%20Learning.py)  
+- [`src/frontend/st/pages/3 LLM Playground.py`](src/frontend/st/pages/3%20LLM%20Playground.py)  
+- [`src/frontend/st/pages/4 Assistant.py`](src/frontend/st/pages/4%20Assistant.py)  
+- [`src/frontend/st/pages/5 Settings.py`](src/frontend/st/pages/5%20Settings.py)
+
+---
+
+## 5.4 Data-Seite: Analyse- und Datenmanagement als Dashboard-Erlebnis
+
+Die Data-Seite stellt den zentralen Einstieg in die fachliche Arbeit mit Finanzdaten dar. Der Nutzer erlebt hier eine Kombination aus **Kontrollpanel (Sidebar)** und **Analysefläche (Main Area)**.
+
+### 5.4.1 Sidebar: Kontrollpanel für Datenupdates und Datenimport
+
+Die Sidebar bündelt systemnahe Operationen:
+- Anzeige „Last manual update“ als Statuskarte
+- Buttons für:
+  - **Update All Data**
+  - **Update Processed Data**
+  - **Update Single Ticker Data**
+- Download neuer Ticker (optional, abhängig von Key und Datenquelle)
+- Upload eigener Datensätze inkl. Konfliktstrategie (Fail/Replace/Append)
+
+Diese Anordnung unterstützt eine klare Handlungskette:
+**(1) Daten verfügbar machen → (2) Daten aktualisieren → (3) Daten analysieren**
+
+### 5.4.2 Analyse-Tab: Interaktive Exploration einzelner Symbole
+
+Im Analysebereich erfolgt die Auswahl eines Symbols aus einer vordefinierten Ticker-Liste (~400 Symbole). Anschließend werden Unternehmensinformationen und Kennzahlen angezeigt (z.B. Sector, Industry, Market Cap, PE Ratio, Beta).  
+
+Darauf aufbauend kann eine Kennzahl bzw. Metrik ausgewählt und als Zeitreihe visualisiert werden. Interaktive Features (Zoom, Hover, Bereichsauswahl) verbessern die Nutzbarkeit insbesondere bei langen Zeitreihen.
+
+### 5.4.3 Compared Stock Analysis: Mehrfachvergleich im selben Dashboard
+
+Die Vergleichsanalyse ermöglicht die Auswahl mehrerer Symbole und zeigt deren Schlusskurse in einer gemeinsamen Visualisierung. Ergänzend werden zentrale Kennzahlen tabellarisch gegenübergestellt. Dies führt zu einem „Dashboard-Charakter“, in dem visuelle Trendbeobachtung (Chart) und kompakte Kennzahlen (Metrikblöcke/Tabelle) kombiniert sind.
+
+### 5.4.4 Tab „Databases“: Transparenz über Datenhaltung
+
+Der zweite Tab liefert eine Übersicht über verfügbare Tabellen (systemseitig und userseitig). Dies wird im Nutzererlebnis als „Admin-/Data-Lake“-Ansicht wahrgenommen und unterstützt:
+- Verständnis, welche Daten vorhanden sind
+- Debugging (z.B. warum ein Symbol fehlt)
+- Kontrolle über userseitige Importe
+
+**Abbildung 5-1 (Platzhalter): Data-Seite – Analyseansicht**  
+> *Hier Screenshot einfügen:* Ticker-Auswahl, Unternehmensinfos, Metrik-Auswahl, Chart  
+`![Data – Analyseansicht](assets/figures/fig_5_1_data_analysis.png)`
+
+**Abbildung 5-2 (Platzhalter): Data-Seite – Tabellensicht / Datenbanken**  
+> *Hier Screenshot einfügen:* Tabellenlisten, User-Tabellen, Row Count  
+`![Data – Datenbanken](assets/figures/fig_5_2_data_databases.png)`
+
+---
+
+## 5.5 Machine Learning Studio: Ergebnisorientiertes Training im Dashboard
+
+Das Machine Learning Studio stellt die Transformation von Daten in Modelle als interaktiven Prozess bereit. Aus Nutzersicht wirkt diese Seite wie eine Kombination aus „Training Wizard“ und „Experimentierlabor“ (Playground), wobei die wichtigsten Parameter in der Sidebar konzentriert sind.
+
+### 5.5.1 Sidebar als Trainings-Konsole
+
+Die Sidebar übernimmt die Rolle eines Konfigurationspanels:
+- Algorithmuswahl (Regression/Klassifikation)
+- Datenquellenauswahl (Yahoo Finance, Alpha Vantage, User Tables)
+- Test-Set-Größe (Slider)
+- Feature-Scaling (StandardScaler, optional)
+- Time-Series Mode (Lag-Features) inkl. Lag-Anzahl
+- Training starten per Button
+
+Diese Struktur führt zu einer klaren Interaktionslogik:
+**Konfigurieren → Daten laden → Features/Target wählen → Horizon/Time-Series einstellen → Trainieren → Ergebnisse prüfen → Modell speichern**
+
+### 5.5.2 Hauptfläche: Datenkontrolle und Modellbildung
+
+Nach Laden einer Datenquelle zeigt die Seite:
+- Übersichtsmodule (Zeilen/Spalten/erkannte Zeitspalte)
+- DataFrame Preview (scrollbar)
+- Feature- und Target-Auswahl
+
+Die automatische Erkennung einer Zeitspalte („time series found“) wirkt aus Nutzerperspektive als Assistenzfunktion, die Fehler reduziert (z.B. falsche Spaltenwahl für Forecast Horizon).
+
+### 5.5.3 Prognosehorizont und Zeitreihenmodus als besondere Ergebnisfunktion
+
+Zwei Funktionen erhöhen den praktischen Wert für Finanzdaten:
+
+1. **Forecast Horizon (Future Target Shift)**  
+   Die Zielvariable wird zeitlich verschoben, um „zukünftige“ Werte zu prognostizieren (1 Day, 3 Weeks, 3 Months, 1 Year).  
+   Für Nutzer ist dies eine intuitive Abstraktion: „Ich möchte den Kurs in X Zeit prognostizieren.“
+
+2. **Time-Series Mode (Lag-Features)**  
+   Statt manuell viele Features zu wählen, kann die Anwendung Lag-Features aus dem Target erzeugen.  
+   Dies erlaubt schnelle Baselines für Zeitreihenmodelle ohne komplexes Feature Engineering.
+
+### 5.5.4 Ergebnisdarstellung: Metriken und Visualisierung
+
+Nach Training werden je nach Modelltyp unterschiedliche Ausgaben gezeigt:
+
+- **Regression:** RMSE, MSE, R² und Vergleichsplot `y_true` vs `y_pred`  
+- **Klassifikation:** Accuracy und Konfusionsmatrix
+
+Die Kombination aus numerischen Metriken und Visualisierung unterstützt eine schnelle Ergebnisbewertung im Dashboard-Kontext.
+
+### 5.5.5 Persistenz: Speicherung der Modelle und Wiederverwendung
+
+Modelle werden als `.pkl` gespeichert und enthalten neben dem Modell auch Metadaten (Algorithmus, Features, Scaler, Horizon, Lag-Mode).  
+Für Nutzer entsteht dadurch ein „Model Registry“-ähnlicher Effekt: Trainingsläufe werden reproduzierbar und wiederverwendbar.
+
+**Abbildung 5-3 (Platzhalter): ML Studio – Konfiguration und DataFrame Preview**  
+`![ML Studio – Daten & Settings](assets/figures/fig_5_3_ml_overview.png)`
+
+**Abbildung 5-4 (Platzhalter): ML Studio – Trainingsergebnisse (Regression)**  
+`![ML Studio – Regression Result](assets/figures/fig_5_4_ml_regression_result.png)`
+
+**Abbildung 5-5 (Platzhalter): ML Studio – Trainingsergebnisse (Klassifikation)**  
+`![ML Studio – Classification Result](assets/figures/fig_5_5_ml_classification_result.png)`
+
+---
+
+## 5.6 Saved Models: Wiederverwendung als Nutzermehrwert
+
+Die Saved-Models-Ansicht (als separater Bereich/Tab innerhalb der ML-Seite) erweitert das Training um einen praktischen Workflow:
+
+- Übersicht aller Modelle inkl. Metadaten (Algo, Data Source, Target, Horizon, Time-Series Mode)
+- Auswahl eines Modells und Anzeige technischer Details
+- Download-Funktion für lokale Weiterverwendung
+- „Try the model with current data“ als Inferenz-Demo
+
+Aus Nutzerperspektive entsteht so eine nachvollziehbare Kette:
+**Trainieren → Speichern → Wiederverwenden → Exportieren**
+
+Diese Funktionalität ist ein wesentliches Ergebnis, da sie ein häufiges Problem in Prototypen löst: Modelle verschwinden nicht nach dem Training, sondern sind als Artefakte verfügbar.
+
+**Abbildung 5-6 (Platzhalter): Saved Models – Modellübersicht**  
+`![Saved Models – Overview](assets/figures/fig_5_6_saved_models.png)`
+
+---
+
+## 5.7 LLM Playground: Datenbasierte Analyse als Text-Resultat
+
+Der LLM Playground ergänzt die klassischen ML-Workflows durch eine sprachbasierte Analyse. Der Nutzer erlebt hier ein Dashboard, das nicht primär numerische Outputs liefert, sondern **erklärenden Text**, der aus Datenproben und statistischen Zusammenfassungen erzeugt wird.
+
+### 5.7.1 Verbindungskonzept (local/host/container) als Ergebnis
+
+Die App bietet drei Verbindungsoptionen (Container Ollama / Host / Local).  
+Damit ist die Nutzung flexibel: vollständig lokal (datenschutzfreundlich) oder containerisiert (reproduzierbares Deployment).
+
+### 5.7.2 Auswahl der Datenquelle und Sample Size
+
+Analog zur ML-Seite kann eine Datenquelle gewählt werden.  
+Zusätzlich wird festgelegt, wie viele Zeilen an das LLM übergeben werden (bis max. 50). Dies wirkt als:
+- Sicherheitsmechanismus gegen zu große Prompts
+- Usability-Funktion zur Fokussierung auf „aktuelle“ Daten
+
+### 5.7.3 Analysemodi und Custom Prompt
+
+Der Nutzer kann zwischen mehreren Modi wählen:
+- Regression
+- Classification
+- Trend Analysis
+- Free Analysis
+
+Damit entsteht ein „Prompt-Template-System“, ohne dass Nutzer direkt Prompt Engineering beherrschen müssen. Der Custom Prompt erlaubt dennoch zusätzliche Steuerung.
+
+### 5.7.4 Ergebnisdarstellung und Transparenz
+
+Das Resultat wird als Text angezeigt („LLM Analysis Result“). Zusätzlich werden:
+- Modellname
+- Prediction Type
+- Datenquelle
+- Features/Target
+- Antwortzeit
+- Sample Size
+
+dokumentiert. Die Einsicht in den generierten Prompt erhöht Transparenz und Nachvollziehbarkeit.
+
+**Abbildung 5-7 (Platzhalter): LLM Playground – Konfiguration und Resultat**  
+`![LLM Playground – Result](assets/figures/fig_5_7_llm_playground.png)`
+
+---
+
+## 5.8 Assistant: Nutzerunterstützung als Dashboard-Komponente
+
+Der Assistant stellt ein ergänzendes Ergebnis dar, das weniger auf Datenanalyse und stärker auf **Hilfe und Guidance** ausgerichtet ist.  
+
+Aus Nutzersicht ist dies ein „kontextueller Helpdesk“, der:
+- Fragen zur Anwendung beantwortet
+- Hinweise zu Modelltraining und Interpretation geben kann
+- den Einstieg für nicht-technische Nutzer erleichtert
+
+Wesentliche UI-Elemente:
+- Chatfenster
+- Reset des Chatverlaufs
+- Anzeige des aktuell verwendeten Modells (z.B. `phi3:mini`)
+
+**Abbildung 5-8 (Platzhalter): Assistant – Chat-Interface**  
+`![Assistant – Chat UI](assets/figures/fig_5_8_assistant.png)`
+
+---
+
+## 5.9 Settings: Konfiguration als Ergebnis für Wartbarkeit und Steuerbarkeit
+
+Die Settings-Seite ist aus Ergebnis-Sicht ein zentraler Baustein, da sie die App **langfristig nutzbar** macht. Sie reduziert Hardcoding und erlaubt Anpassungen ohne Codeänderung.
+
+### 5.9.1 Global Settings
+- Ollama-Konfiguration (Local/Standard)
+- Reset-Funktionen
+- Alpha Vantage Key Eingabe (Session-orientiert)
+
+### 5.9.2 Data Settings
+- Löschen ausgewählter Tabellen (mit Sicherheitsabfrage)
+- Initial Ticker Verwaltung (Standardliste vs. Customliste)
+- Begrenzung des frühesten Analyse-Datums (Performance und Fokus)
+
+### 5.9.3 Machine Learning Settings
+- Übersicht und Löschung gespeicherter Modelle
+- Konfiguration Training Limits:
+  - minimal erforderliche Zeilenanzahl
+  - maximale Trainingszeilen
+
+### 5.9.4 Assistant Settings
+- Auswahl der Ollama-Quelle
+- Modellmanagement inkl. Download falls nicht verfügbar
+
+**Abbildung 5-9 (Platzhalter): Settings – Konfigurationsbereiche**  
+`![Settings – Overview](assets/figures/fig_5_9_settings.png)`
+
+---
+
+## 5.10 Zusammenfassung der Ergebnisse und Bewertung aus Nutzersicht
+
+### 5.10.1 Erreichte Anforderungen
+
+Die Anwendung erfüllt die Kernanforderung einer **anwenderfreundlichen Finanzanalyse-Plattform**, indem sie:
+- mehrere Datenquellen integriert
+- Daten persistiert und verwaltet
+- ML-Training und LLM-Analyse in UI-Workflows übersetzt
+- Ergebnisse verständlich visualisiert oder textuell erklärt
+- zentrale Konfiguration über Settings bereitstellt
+- lokal wie containerisiert betrieben werden kann
+
+### 5.10.2 Stärken des Dashboards
+- **Modularität im UI:** klare Seitenstruktur entlang typischer Workflows  
+- **Niedrige Einstiegshürde:** Setup-Seite und Assistant reduzieren Fehlbedienung  
+- **Exploration + Experiment:** Data-Seite (Exploration) und ML/LLM (Experiment) ergänzen sich  
+- **Persistenz:** gespeicherte Modelle und system_config ermöglichen Wiederverwendung  
+- **Lokaler Betrieb (Privacy):** Ollama lokal/containerisiert ohne Cloud-Abhängigkeit
+
+### 5.10.3 Grenzen und beobachtbare Einschränkungen
+- Große Tabellen (z.B. mehrere Millionen Zeilen) können Ladezeiten verursachen; Sicherheitslimits begrenzen Trainingszeilen.
+- Die ML-Seite stellt primär eine Trainingsumgebung bereit; fachliche Validität hängt stark von sinnvoller Feature/Target-Auswahl ab.
+- LLM-Analysen sind abhängig von Modellqualität, Promptlänge und Datenprobe; Ergebnisse sind qualitativ, nicht deterministisch.
+- Alpha Vantage Limits (Requests pro Minute/Tag) beeinflussen Download-Workflows.
+
+### 5.10.4 Ergebnischarakter
+Insgesamt ist FinSight als **funktionsfähiger Prototyp** mit ausgeprägtem Dashboard-Charakter zu bewerten. Die Anwendung demonstriert die Integration von:
+- Dateninfrastruktur (SQLite, ETL, Updates)
+- klassischer Analytics (Charts, Kennzahlen)
+- ML-Workflows (Training, Evaluation, Model Bundles)
+- LLM-Workflows (Prompting, Analyse, Assistenz)
+
+Damit wurde ein umfassendes, interaktives Ergebnis artefaktisch umgesetzt, das sowohl für explorative Nutzung (Analyse & Vergleiche) als auch für experimentelle Modellierung (ML/LLM) geeignet ist.
+
+---
+
+## 5.11 Hinweise zur Dokumentation der Abbildungen
+
+Für die finale Berichtsversion wird empfohlen, die Platzhalter-Abbildungen durch Screenshots zu ersetzen.  
+Geeignete Screenshots sind insbesondere:
+
+- Data: Analyseansicht + Vergleichsanalyse + Datenbanken-Tab
+- ML Studio: Einstellungen + DataFrame Preview + Ergebnisansichten (Regression/Klassifikation)
+- Saved Models: Übersicht + Modelldetail + Inferenz-Expander
+- LLM Playground: Verbindungs-Setup + Ergebnis + Prompt-Ansicht
+- Assistant: Chatfenster
+- Settings: Global/Data/ML/Assistant Bereiche
+
+Zur konsistenten Referenzierung im Bericht empfiehlt sich ein Ordner, z.B.:  
+`src/frontend/st/assets/figures/` oder `report_assets/figures/`  
+und ein fortlaufendes Abbildungsnummern-Schema.
 
 
 
