@@ -383,12 +383,10 @@ Die im Finanzdashboard verarbeiteten Daten stammen aus (i) externen Marktdaten- 
 
 Zusätzlich können Nutzerinnen und Nutzer eigene Datensätze im Format **CSV** oder **Excel (XLS/XLSX)** hochladen, um individuelle Analysen durchzuführen oder alternative Datenquellen einzubinden.
 
-> **Hinweis zur Nachvollziehbarkeit**: Für die wissenschaftliche Dokumentation sollten die verwendeten Anbieter/Endpunkte in Form der offiziellen Dokumentationen zitiert werden (z. B. Anbieter-Doku, Nutzungsbedingungen). Alle Aussagen zu Dateninhalt, Aktualität und Einschränkungen sind entsprechend zu belegen.
-
 
 ### 3.2 Datenumfang
 
-Der standardmäßig konfigurierte Download-Zeitraum umfasst **1995 bis 2020**. Dieser Zeitraum ist als Default in der Applikation hinterlegt, kann jedoch über eine **Settings-Seite** durch die Nutzerin bzw. den Nutzer angepasst werden. Als Ausgangsuniversum stehen derzeit **ca. 400 Aktien (Ticker-Symbole)** zur Verfügung, für die Daten auf Knopfdruck initial heruntergeladen und gespeichert werden können.
+Der standardmäßig konfigurierte Download-Zeitraum umfasst **1995 bis 2020**. Dieser Zeitraum ist als Default in der Applikation hinterlegt, kann jedoch über eine **Settings-Seite** durch die Nutzerin bzw. den Nutzer angepasst werden. Als Ausgangsuniversum stehen derzeit **ca. 400 Aktien (Ticker-Symbole)** zur Verfügung, für die Daten auf Knopfdruck initial heruntergeladen und gespeichert werden können. Diese liegen als python Liste im Backend vor.
 
 Die Datenbeschaffung erfolgt **nicht automatisiert über einen Scheduler**, sondern wird **manuell** durch Nutzerinteraktion (Button-Klick) ausgelöst. Eine zeitgesteuerte Aktualisierung (z. B. täglich/weekly) ist als mögliche Erweiterung vorgesehen.
 
@@ -408,9 +406,6 @@ Für die Speicherung wird eine lokale relationale Datenbank (**SQLite**) verwend
 - **strukturiert** gespeichert (Tabellenmodell),
 - und können in nachgelagerten Verarbeitungsschritten (z. B. Feature Engineering, Modelltraining, Dashboard-Visualisierung) effizient abgefragt werden.
 
-Je nach Datenquelle wird zusätzlich eine Quellenkennzeichnung (z. B. `source`) empfohlen, um Unterschiede zwischen Anbietern im weiteren Analyseprozess transparent zu machen (z. B. bei Abweichungen durch Adjustments oder Zeitzonen).
-
-
 ### 3.4 Datenaufbereitung
 
 Die Datenaufbereitung ist im aktuellen Projektstand **quell- und datenartabhängig** umgesetzt:
@@ -420,9 +415,6 @@ Die Datenaufbereitung ist im aktuellen Projektstand **quell- und datenartabhäng
 - **Alpha Vantage**: Für Alpha-Vantage-Daten existiert ein **Processing-Skript**, das die Rohdaten aus der Datenbank extrahiert und eine Selektion/Filterung vornimmt. Dabei werden insbesondere Ticker/Datenreihen entfernt, die keine ausreichende Datenabdeckung aufweisen (z. B. fehlende Rückgaben für bestimmte Endpunkte). Die bereinigten Daten werden anschließend in eine „bereinigte“ Datenbankstruktur überführt, um sie konsistent für Modellierung und Auswertung bereitzustellen.
 
 - **Umgang mit fehlenden Werten**: Fehlende Werte werden im aktuellen Workflow **in späteren Schritten** (z. B. im Machine-Learning-Skript) weiter behandelt, indem unvollständige Datensätze (Nullwerte) gefiltert bzw. ausgeschlossen werden. Dies reduziert das Risiko fehlerhafter Modellinputs, kann jedoch zu einer Verringerung der Datenbasis führen.
-
-- **Regionale Abdeckung**: Bei der Interpretation ist zu berücksichtigen, dass **Alpha Vantage** in der verwendeten Konfiguration primär **US-börsennotierte** Werte zuverlässig abdeckt. Europäische Titel können abhängig vom Symbolschema und der Datenverfügbarkeit unvollständig sein. Dies ist insbesondere relevant, wenn im Dashboard ein gemischtes Universum (USA/EU) betrachtet wird.
-
 
 ### 3.5 Datenqualität und Limitationen
 
@@ -435,8 +427,11 @@ Durch die Nutzung mehrerer externer Datenanbieter können systematische Untersch
 Zusätzlich unterliegen die externen Datenquellen **API-Limits** (z. B. Request-Limits pro Zeiteinheit) und einer anbieterabhängigen **Aktualisierungsfrequenz**. Dies kann die Reproduzierbarkeit von Abrufen (Zeitpunktabhängigkeit) sowie die Vollständigkeit der Daten beeinträchtigen.
 
 Eine weitere Einschränkung besteht darin, dass **nicht für alle Instrumente oder Zeiträume „Adjusted Close“-Preise** verfügbar sind. Je nach Analyseziel (z. B. Renditeberechnung über lange Horizonte) kann dies die Vergleichbarkeit von Zeitreihen beeinflussen. Insgesamt ist die Leistungsfähigkeit der Anwendung daher in hohem Maße von Datenzugang, API-Berechtigungen und Verfügbarkeit der jeweiligen Endpunkte abhängig.
+Es werden für die meiste Analyse die adjusted_close Preise verwendet um eine möglichst unverzerrte Datengrundlage zu gewährleisten.
 
-> **Empfehlung**: Für wissenschaftliche Arbeiten sollte transparent dokumentiert werden, welche Preisdefinitionen (Close vs. Adjusted Close) verwendet werden und welche Auswirkungen dies auf Kennzahlen und Modelloutputs haben kann.
+**Regionale Abdeckung**: Bei der Interpretation ist zu berücksichtigen, dass **Alpha Vantage** in der verwendeten Konfiguration primär **US-börsennotierte** Werte zuverlässig abdeckt. Europäische Titel können abhängig vom Symbolschema und der Datenverfügbarkeit unvollständig sein. Dies ist insbesondere relevant, wenn im Dashboard ein gemischtes Universum (USA/EU) betrachtet wird.
+
+**Datentypen:** Viele der gespeicherten Werte werden zunächst als Strings aus den API-Antworten übernommen und in dieser Form in der Datenbank persistiert. Dies kann in späteren Verarbeitungsschritten (z. B. bei Berechnungen oder Modelltraining) zu Problemen führen. Daher werden die betroffenen Felder in der Machine-Learning-Vorverarbeitung in numerische Datentypen konvertiert. Es ist entsprechend zu berücksichtigen, dass Rohdaten teilweise in String-Form in der Datenbank vorliegen **können**.
 
 
 ### 3.6 Nutzerbereitgestellte Daten
@@ -459,7 +454,6 @@ In der aktuellen Implementierung erfolgt beim Upload lediglich eine grundlegende
 | `YF_COMPANY_INFO` | Yahoo Finance | Unternehmens-Stammdaten/Profilinformationen | **Empfohlen:** `symbol` eindeutig | `symbol`, `longName`, `shortName`, `sector`, `industry`, `longBusinessSummary`, `address1`, `city`, `state`, `zip`, `country`, `website`, `irWebsite`, `phone`, `fullTimeEmployees`, `companyOfficers`, `overallRisk`, `auditRisk`, `boardRisk`, `compensationRisk`, `shareHolderRightsRisk`, `exchange`, `fullExchangeName`, `region`, `language` |
 | `YF_OHLCV` | Yahoo Finance | Historische Kurszeitreihe (OHLCV) | **Empfohlen:** Unique (`symbol`, `date`) | `symbol`, `date`, `open`, `high`, `low`, `close`, `volume`,`adj_close` |
 
-> Hinweis: Viele Alpha-Vantage-Werte werden als „raw“ gespeichert (Originalformat aus der API, häufig String) und erst in nachgelagerten Schritten (Processing/ML) numerisch interpretiert bzw. gefiltert.
 
 ---
 
