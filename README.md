@@ -491,6 +491,903 @@ In der aktuellen Implementierung erfolgt beim Upload lediglich eine grundlegende
 
 ---
 
+# 3. Implementierung
+
+Die Implementierung der Finanzanalyse-Plattform erfolgte auf Basis einer modularen Softwarearchitektur mit klarer Trennung zwischen Datenhaltung, Backend-Logik und Frontend-Präsentation. Im Folgenden werden die technische Umsetzung, zentrale Designentscheidungen und die Struktur der implementierten Komponenten beschrieben.
+
+## 3.1 Systemarchitektur und Technologie-Stack
+
+### 3.1.1 Architekturkonzept
+
+Die Plattform folgt einer **Drei-Schichten-Architektur**, die eine strikte Separation of Concerns gewährleistet (Sommerville, 2015). Diese Architekturentscheidung ermöglicht eine unabhängige Entwicklung und Wartung einzelner Komponenten sowie eine flexible Erweiterbarkeit des Systems.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              Präsentationsschicht                       │
+│                  (Streamlit UI)                         │
+│  - Start.py, Data.py, Machine Learning.py               │
+│  - LLM Playground.py, Assistant.py, Settings.py         │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│              Logikschicht (Backend)                     │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │   API Services (yf_connect, av_connect, ollama)  │   │
+│  └──────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │   Data Processing (alphavantage_processing)      │   │
+│  └──────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │   Database Layer (db_functions, users_database)  │   │
+│  └──────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │   Machine Learning (ML-Module)                   │   │
+│  └──────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │   Orchestrierung (scheduler, llm_functions)      │   │
+│  └──────────────────────────────────────────────────┘   │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│           Datenhaltungsschicht (SQLite)                 │
+│  - alphavantage.db, alphavantage_processed.db           │
+│  - yfinance.db, system_config.db, users_database.db     │
+└─────────────────────────────────────────────────────────┘
+```
+
+Die Wahl einer Schichtenarchitektur bietet mehrere Vorteile: Änderungen in der Datenbankstruktur können isoliert in der Datenhaltungsschicht vorgenommen werden, ohne Frontend-Code anzupassen. Die Backend-Logik kann unabhängig von der UI getestet werden, und einzelne Komponenten lassen sich bei Bedarf durch alternative Implementierungen ersetzen.
+
+### 3.1.2 Technologie-Stack
+
+Die Auswahl der Technologien erfolgte unter Berücksichtigung der Projektanforderungen, der Verfügbarkeit von Bibliotheken für Finanzanalysen und der Entwicklungsgeschwindigkeit:
+
+| Komponente | Technologie | Version | Begründung |
+|------------|-------------|---------|------------|
+| **Programmiersprache** | Python | 3.x | De-facto-Standard für Data Science und ML, umfangreiches Ökosystem |
+| **Frontend-Framework** | Streamlit | - | Rapid Prototyping für datengetriebene Anwendungen ohne JavaScript-Kenntnisse erforderlich |
+| **Datenbank** | SQLite | 3.x | Embedded Database ohne separate Installation, ausreichend für Prototyp-Umfang |
+| **ORM** | SQLAlchemy | - | Abstraktionsschicht für Datenbankzugriffe, Schutz vor SQL-Injection |
+| **ML-Framework** | Scikit-Learn | - | Standardisierte API, breite Algorithmenauswahl, gut dokumentiert |
+| **Visualisierung** | Plotly | - | Interaktive Charts mit JavaScript-Rendering, native Streamlit-Integration |
+| **API-Client (Finanzdaten)** | yfinance | - | Bewährte Bibliothek für Yahoo Finance API, kostenlos und ohne API-Key |
+| **HTTP-Client** | requests | - | Standard-Bibliothek für HTTP-Anfragen (Alpha Vantage API) |
+| **LLM-Framework** | Ollama | - | Lokale LLM-Ausführung, datenschutzfreundlich, keine Cloud-Abhängigkeit |
+| **Containerisierung** | Docker, Docker Compose | - | Reproduzierbare Deployment-Umgebung, vereinfachte Installation |
+
+Die Entscheidung für SQLite als Datenbanksystem basiert auf der Eignung für Einzelnutzer-Anwendungen und die Vermeidung zusätzlicher Infrastrukturanforderungen. Für produktive Multi-User-Szenarien wäre eine Migration zu PostgreSQL oder MySQL zu empfehlen.
+
+Streamlit wurde gegenüber Alternativen wie Dash oder Flask bevorzugt, da es die schnellste Entwicklung interaktiver Dashboards ermöglicht und eine native Integration von Data Science-Bibliotheken bietet (Streamlit Inc., 2024).
+
+### 3.1.3 Projektstruktur
+
+Die Implementierung folgt einer hierarchischen Ordnerstruktur, die eine klare Trennung von Verantwortlichkeiten gewährleistet:
+
+```
+PRAXISP_SOURCE/
+├── data/                          # Persistente Datenhaltung
+│   ├── alphavantage.db
+│   ├── alphavantage_processed.db
+│   ├── yfinance.db
+│   ├── system_config.db
+│   └── users_database.db
+│
+├── saved_models/                  # Persistierte ML-Modelle
+│
+├── src/
+│   ├── backend/
+│   │   ├── api_services/          # Externe API-Anbindungen
+│   │   │   ├── yf_connect.py
+│   │   │   ├── av_connect.py
+│   │   │   └── ollama_connect.py
+│   │   ├── data_processing/       # ETL-Pipeline
+│   │   │   └── alphavantage_processing.py
+│   │   ├── database/              # Datenzugriffsschicht
+│   │   │   ├── db_functions.py
+│   │   │   ├── database_utils.py
+│   │   │   └── users_database.py
+│   │   ├── machine_learning/      # ML-Algorithmen
+│   │   ├── data_model.py          # Zentrale Datenstrukturen
+│   │   ├── launch.py              # Anwendungsstart
+│   │   ├── llm_functions.py       # LLM-Hilfsfunktionen
+│   │   ├── markdown.py            # UI-Textinhalte
+│   │   └── scheduler.py           # Daten-Update-Orchestrierung
+│   │
+│   └── frontend/
+│       └── st/
+│           ├── assets/            # Statische Ressourcen
+│           ├── pages/             # Streamlit-Seiten
+│           │   ├── 1 Data.py
+│           │   ├── 2 Machine Learning.py
+│           │   ├── 3 LLM Playground.py
+│           │   ├── 4 Assistant.py
+│           │   └── 5 Settings.py
+│           └── Start.py           # Einstiegspunkt
+│
+├── docker-compose.yml             # Container-Orchestrierung
+├── Dockerfile                     # Container-Definition
+└── requirements.txt               # Python-Dependencies
+```
+
+Diese Struktur implementiert das **Package-by-Feature-Prinzip** auf oberster Ebene (Backend/Frontend) und das **Package-by-Layer-Prinzip** innerhalb des Backends (API Services, Data Processing, Database, ML). Dies ermöglicht eine intuitive Navigation und erleichtert die Lokalisierung spezifischer Funktionalitäten (Martin, 2017).
+
+---
+
+## 3.2 Dateninfrastruktur
+
+### 3.2.1 Datenbankdesign und -struktur
+
+Die Datenhaltung basiert auf **fünf separaten SQLite-Datenbanken**, die jeweils unterschiedliche Datendomänen abdecken. Diese Aufteilung folgt dem Prinzip der **fachlichen Kohäsion** (Fowler, 2002) und ermöglicht eine klare Trennung von Rohdaten, verarbeiteten Daten, Nutzerdaten und Systemkonfigurationen.
+
+#### 3.2.1.1 alphavantage.db (Rohdaten)
+
+Diese Datenbank dient als Speicher für unverarbeitete Daten aus der Alpha Vantage API und enthält zwei Haupttabellen:
+
+**Tabelle: `alphavantage_daily_pricing`**
+- Funktion: Speicherung historischer Kurszeitreihen
+- Struktur: OHLCV-Format (Open, High, Low, Close, Volume) plus Adjusted Close
+- Primary Key: Composite Key aus `(symbol, date)`
+- Datenherkunft: Alpha Vantage API Endpoint `TIME_SERIES_DAILY_ADJUSTED`
+
+**Tabelle: `alphavantage_raw_kpi`**
+- Funktion: Speicherung fundamentaler Unternehmenskennzahlen
+- Inhalt: Diverse KPIs im Rohformat ohne Vorverarbeitung
+- Primary Key: `symbol`
+- Besonderheit: Enthält zahlreiche Spalten, von denen viele überwiegend NULL-Werte aufweisen
+
+Die bewusste Trennung zwischen Kurs- und KPI-Daten folgt dem Prinzip der **Normalisierung** (Codd, 1970) und vermeidet Redundanzen, da Kursdaten eine Zeitreihendimension besitzen, während KPIs typischerweise statisch für ein Unternehmen sind.
+
+#### 3.2.1.2 alphavantage_processed.db (Verarbeitete Daten)
+
+Diese Datenbank enthält bereinigte Varianten der Alpha Vantage-Rohdaten:
+
+**Tabelle: `alphavantage_pricing_processed`**
+- Funktion: Bereinigte Kursdaten
+- Verarbeitung: Entfernung NaN-dominierter Spalten, Duplikat-Eliminierung
+- Constraint: `UNIQUE(symbol, date)` verhindert doppelte Einträge auf Datenbankebene
+
+**Tabelle: `alphavantage_processed_kpi`**
+- Funktion: Bereinigte Unternehmenskennzahlen
+- Verarbeitung: Entfernung von Spalten mit >80% NULL-Werten
+- Rationale: Reduzierung des Datenvolumens und Fokussierung auf tatsächlich verfügbare Kennzahlen
+
+Die Existenz einer separaten "processed"-Datenbank implementiert das **Data Lake vs. Data Warehouse**-Konzept im Kleinen: Rohdaten bleiben unverändert erhalten (Data Lake), während verarbeitete Daten für Analysen optimiert werden (Data Warehouse) (Inmon, 2005).
+
+#### 3.2.1.3 yfinance.db (Yahoo Finance Daten)
+
+Dies ist die umfangreichste Datenbank mit historischen Daten für die Initial-Ticker-Liste von ca. 400 Aktien:
+
+**Tabelle: `yf_pricing_history`**
+- Funktion: Historische Kursdaten
+- Struktur: OHLCV-Format mit Adjusted Close
+- Zeitraum: Ab 1995 bis aktuell (konfigurierbar)
+- Datenmenge: Mehrere Millionen Datensätze je nach Zeitraum
+- Primary Key: `(symbol, date)`
+- Besonderheit: Auto-Adjusted Kurse standardmäßig aktiviert
+
+**Tabelle: `yf_company_info`**
+- Funktion: Unternehmensmetadaten
+- Inhalt: Name, Sektor, Industrie, Land, Kurzbeschreibung
+- Primary Key: `symbol`
+- Verwendung: Kontextualisierung in der Data-Analyseansicht
+
+Die Größe dieser Datenbank (mehrere Millionen Datensätze) erfordert besondere Aufmerksamkeit hinsichtlich Query-Performance, wofür SQLite-Indizes auf den Primary Keys automatisch angelegt werden.
+
+#### 3.2.1.4 system_config.db (Persistente Konfiguration)
+
+Diese Datenbank implementiert einen **Key-Value-Store** für anwendungsweite Einstellungen:
+
+**Tabelle: `global_config`**
+- Struktur: `name` (TEXT, Primary Key), `value` (TEXT), `data_type` (TEXT), `description` (TEXT)
+- Funktion: Persistierung von Einstellungen über Streamlit-Neustarts hinweg
+- Typische Inhalte:
+  - Button-Status-Flags (technische Absicherung gegen Session State-Verlust)
+  - Ausgewähltes LLM-Modell für Assistenten
+  - Modifizierte Initial-Ticker-Liste (als JSON-String)
+  - Ollama-Verbindungskonfiguration
+  - ML-Training-Parameter (z.B. Zeilenlimits)
+
+Die Implementierung eines eigenen Konfigurationssystems war notwendig, da Streamlit's Session State bei jedem Neustart zurückgesetzt wird. Durch Speicherung kritischer Konfigurationen in SQLite wird Persistenz gewährleistet, während gleichzeitig der Session State für transiente UI-Zustände verwendet werden kann (Hybridansatz).
+
+#### 3.2.1.5 users_database.db (Nutzerdaten)
+
+Diese Datenbank enthält dynamisch erstellte Tabellen aus Nutzer-Uploads:
+
+- Funktion: Speicherung von CSV/Excel-Importen
+- Schema: Dynamisch basierend auf importierten Daten
+- Spaltennamen: Automatisch normalisiert (Leerzeichen entfernt, lowercase, Unterstriche)
+- Besonderheit: Ermöglicht Nutzern das Einbringen eigener Datensätze für Analysen
+
+Die Trennung der Nutzerdatenbank von Systemdatenbanken folgt dem **Principle of Least Privilege**: Nutzer können nur in ihrer eigenen Datenbank Tabellen anlegen/löschen, ohne Systemdaten zu gefährden.
+
+#### 3.2.1.6 Datenbankzugriff via SQLAlchemy
+
+Alle Datenbankoperationen erfolgen ausschließlich über SQLAlchemy als Object-Relational Mapping (ORM) Framework. Dies bietet mehrere Vorteile:
+
+1. **SQL-Injection-Prävention**: Parametrisierte Queries verhindern Injection-Angriffe
+2. **Datenbankabstraktion**: Potenzielle Migration zu anderen DBMS vereinfacht
+3. **Pythonic API**: Datenbankzugriffe folgen Python-Konventionen
+4. **Automatische Typkonvertierung**: Mapping zwischen SQL- und Python-Typen
+
+Die zentrale Abstraktion erfolgt über das Modul [`db_functions.py`](src/backend/database/db_functions.py), das alle CRUD-Operationen kapselt und dem Frontend eine konsistente Schnittstelle bietet.
+
+### 3.2.2 API-Integration
+
+#### 3.2.2.1 Alpha Vantage API (av_connect.py)
+
+Die Alpha Vantage API dient als Quelle für fundamentale Unternehmenskennzahlen und historische Kursdaten. Die Implementierung befindet sich in [`av_connect.py`](src/backend/api_services/av_connect.py).
+
+**Authentifizierung:**
+Der API-Key wird aus dem Streamlit Session State ausgelesen (`st.session_state.api_key_av`) und nicht persistent gespeichert. Diese Designentscheidung erhöht die Sicherheit, da sensible Zugangsdaten nicht in Konfigurationsdateien oder Datenbanken abgelegt werden. Allerdings erfordert dies eine erneute Eingabe nach jedem Neustart der Anwendung.
+
+**Rate Limiting:**
+Alpha Vantage limitiert kostenlose Accounts auf:
+- 25 Anfragen pro Tag
+- 5 Anfragen pro Minute
+
+Die Implementierung enthält Schutzmechanismen zur Einhaltung dieser Limits und zur Vermeidung unnötiger API-Belastung. Die genaue Strategie (z.B. Sleep zwischen Requests, Request-Counter) ist im Code hinterlegt.
+
+**Orchestrierung:**
+API-Calls werden nicht direkt aus [`av_connect.py`](src/backend/api_services/av_connect.py) initiiert, sondern über das zentrale Orchestrierungsmodul [`scheduler.py`](src/backend/scheduler.py). Dies implementiert das **Facade-Pattern** (Gamma et al., 1994) und zentralisiert die Kontrolle über Daten-Updates.
+
+**Verwendete Funktionen:**
+- [`create_av_raw_entry()`](src/backend/database/db_functions.py): Speichert Rohdaten in `alphavantage.db`
+- [`create_av_pricing_entry()`](src/backend/database/db_functions.py): Speichert Pricing-Daten
+
+#### 3.2.2.2 Yahoo Finance API (yf_connect.py)
+
+Die Yahoo Finance API wird über die Python-Bibliothek `yfinance` angebunden und erfordert keine Authentifizierung. Die Implementierung befindet sich in [`yf_connect.py`](src/backend/api_services/yf_connect.py).
+
+**Zentrale Funktionen:**
+
+**[`download_yf_pricing_raw_timeperiod()`](src/backend/api_services/yf_connect.py):**
+- Zweck: Download von Kursdaten für definierten Zeitraum
+- Parameter: Liste von Symbolen, Startdatum (2024-01-01), Enddatum (2025-01-01)
+- Besonderheit: Zeitgrenzen sind aktuell hart codiert
+- Speicherung: Direkt in `yf_pricing_history`-Tabelle
+
+**[`download_yf_pricing_raw_newest()`](src/backend/api_services/yf_connect.py):**
+- Zweck: Aktualisierung auf neueste verfügbare Daten
+- Parameter: Symbol, Period (Standard: "1d")
+- Verwendung: Inkrementelle Updates einzelner Ticker
+
+**[`download_price_history()`](src/backend/api_services/yf_connect.py):**
+- Zweck: Initiales Befüllen der Datenbank
+- Zeitraum: Ab 1995 bis aktuell
+- Verarbeitung: Batch-Processing für Ticker-Liste
+- Verwendung: Einmalig beim Setup
+
+**[`download_yf_company_info()`](src/backend/api_services/yf_connect.py):**
+- Zweck: Download von Unternehmensmetadaten
+- Quelle: `yfinance.Ticker.info`-Dictionary
+- Speicherung: In `yf_company_info`-Tabelle
+
+**Auto-Adjusted Kurse:**
+Alle Funktionen verwenden standardmäßig `auto_adjust=True`, um automatisch für Splits und Dividenden bereinigte Kurse zu laden. Dies ist essentiell für korrekte historische Analysen, da nominale Kurse durch Splits verzerrt wären (Yahoo Finance, 2024).
+
+#### 3.2.2.3 Ollama API (ollama_connect.py)
+
+Die Ollama-Anbindung ermöglicht die lokale Ausführung von Large Language Models. Die Implementierung erfolgt in [`ollama_connect.py`](src/backend/api_services/ollama_connect.py) mit unterstützenden Hilfsfunktionen in [`llm_functions.py`](src/backend/llm_functions.py).
+
+**Verbindungsmanagement:**
+
+**[`check_connection()`](src/backend/llm_functions.py):**
+- Zweck: Prüfung der Erreichbarkeit der Ollama-Instanz
+- Implementierung: HTTP-Request an Ollama-Healthcheck-Endpoint
+- Rückgabe: Boolean (True wenn erreichbar)
+
+**[`ensure_model()`](src/backend/llm_functions.py):**
+- Zweck: Sicherstellung der Modellverfügbarkeit
+- Prüfung: Abfrage der installierten Modelle via Ollama API
+- Verwendung: Vor LLM-Anfragen zur Fehlervermeidung
+
+**[`base_url_from_choice()`](src/backend/llm_functions.py):**
+- Zweck: Ermittlung der korrekten Ollama-URL basierend auf Deployment-Szenario
+- Optionen:
+  - `'local'`: `http://localhost:11434` (lokale Installation)
+  - `'host'`: `http://host.docker.internal:11434` (Container greift auf Host zu)
+  - `'container'`: `http://ollama:11434` (Container-zu-Container-Kommunikation)
+- Rationale: Verschiedene Deployment-Szenarien erfordern unterschiedliche Netzwerk-Konfigurationen
+
+### 3.2.3 Datenverarbeitung (ETL-Pipeline)
+
+#### 3.2.3.1 Alpha Vantage Processing
+
+Die Verarbeitung der Alpha Vantage-Rohdaten erfolgt durch das Modul [`alphavantage_processing.py`](src/backend/data_processing/alphavantage_processing.py) und implementiert eine einfache **ETL-Pipeline** (Extract, Transform, Load).
+
+**Extract-Phase:**
+Rohdaten werden aus `alphavantage.db` extrahiert:
+- Tabelle `alphavantage_daily_pricing` → Pandas DataFrame
+- Tabelle `alphavantage_raw_kpi` → Pandas DataFrame
+
+**Transform-Phase:**
+Datenbereinigung nach folgenden Regeln:
+- **NaN-Eliminierung**: Spalten mit >80% NULL-Werten werden entfernt
+- **Duplikat-Entfernung**: Identische `(symbol, date)`-Kombinationen werden dedupliziert
+- **Typkonvertierung**: Datumsspalten werden zu `datetime`-Objekten konvertiert
+- **Sortierung**: Chronologische Sortierung nach Datum
+
+Die Schwellenwert-Wahl von 80% für NaN-Eliminierung ist pragmatisch begründet: Spalten mit überwiegend fehlenden Werten bieten keinen analytischen Mehrwert und vergrößern unnötig das Datenvolumen. Ein niedrigerer Schwellenwert würde potenziell relevante Spalten entfernen; ein höherer würde nutzlose Spalten beibehalten.
+
+**Load-Phase:**
+Bereinigte Daten werden in `alphavantage_processed.db` geschrieben:
+- Tabelle `alphavantage_pricing_processed`
+- Tabelle `alphavantage_processed_kpi`
+- `UNIQUE`-Constraint auf `(symbol, date)` verhindert Duplikate auf Datenbankebene
+
+**Erweiterbarkeit:**
+Die aktuelle Implementierung ist bewusst generisch gehalten und kann um weitere Verarbeitungsschritte ergänzt werden:
+- Imputation fehlender Werte (z.B. Forward-Fill für Zeitreihen)
+- Feature-Engineering (z.B. gleitende Durchschnitte)
+- Normalisierung/Standardisierung numerischer Spalten
+- Outlier-Detection und -Behandlung
+
+**Frontend-Zugriffsfunktionen:**
+Das Modul stellt Hilfsfunktionen für Frontend-Abfragen bereit:
+- [`get_unique_symbols_from_table()`](src/backend/data_processing/alphavantage_processing.py): Liefert verfügbare Symbole
+- [`get_processed_entries_by_symbol()`](src/backend/data_processing/alphavantage_processing.py): Filtert Daten nach Symbol
+- [`get_processed_table()`](src/backend/data_processing/alphavantage_processing.py): Lädt komplette Tabelle
+
+#### 3.2.3.2 Daten-Update-Orchestrierung (scheduler.py)
+
+Das Modul [`scheduler.py`](src/backend/scheduler.py) fungiert als zentraler Orchestrator für Daten-Updates und implementiert das **Coordinator-Pattern** (Buschmann et al., 1996).
+
+**Hauptfunktionen:**
+
+**[`load_data(data: list)`](src/backend/scheduler.py):**
+- Zweck: Download und Verarbeitung von Alpha Vantage-Daten für Symbol-Liste
+- Ablauf:
+  1. Iteration über Symbol-Liste
+  2. API-Call für Pricing-Daten via [`av_connect.py`](src/backend/api_services/av_connect.py)
+  3. API-Call für KPI-Daten via [`av_connect.py`](src/backend/api_services/av_connect.py)
+  4. Speicherung in Rohdatenbank
+  5. Trigger der Processing-Pipeline via [`alphavantage_processing.py`](src/backend/data_processing/alphavantage_processing.py)
+  6. Aktualisierung des Last-Update-Timestamps in `system_config.db`
+- Logging: Backend-Protokollierung von Erfolg/Fehler pro Symbol
+- Error Handling: Fehler bei einzelnen Symbolen brechen Gesamtprozess nicht ab (Robustheit)
+
+**[`load_initial_data()`](src/backend/scheduler.py):**
+- Zweck: Initiales Laden der Default-Ticker-Liste
+- Ablauf:
+  1. Prüfung auf benutzerdefinierte Ticker-Liste in `system_config.db`
+  2. Falls vorhanden: Verwendung der Custom-Liste
+  3. Falls nicht: Fallback auf Standard-Liste aus [`data_model.py`](src/backend/data_model.py) (ca. 400 Symbole)
+  4. Aufruf von [`load_data()`](src/backend/scheduler.py) mit ermittelter Liste
+- Rationale: Ermöglicht Nutzern Anpassung der Initial-Daten ohne Code-Änderungen
+
+**Zukünftige Erweiterungen:**
+Die Bezeichnung "scheduler" impliziert zeitgesteuerte Ausführung. Aktuell erfolgen Updates manuell über Frontend-Buttons. Eine mögliche Erweiterung wäre die Integration eines Scheduling-Frameworks (z.B. APScheduler) für automatisierte Updates in definierten Intervallen.
+
+---
+
+## 3.3 Backend-Implementierung
+
+### 3.3.1 Datenbankschicht
+
+#### 3.3.1.1 Zentrale Datenzugriffsschicht (db_functions.py)
+
+Das Modul [`db_functions.py`](src/backend/database/db_functions.py) implementiert das **Data Access Object (DAO) Pattern** (Alur et al., 2001) und kapselt sämtliche Datenbankoperationen. Dies gewährleistet eine konsistente Schnittstelle zwischen Frontend und Datenbank und ermöglicht eine zentrale Fehlerbehandlung.
+
+**Funktionsgruppen:**
+
+**Alpha Vantage Rohdaten:**
+- [`create_av_raw_entry()`](src/backend/database/db_functions.py): INSERT für KPI-Rohdaten
+- [`create_av_pricing_entry()`](src/backend/database/db_functions.py): INSERT für Pricing-Rohdaten
+- Verwendung: Ausschließlich durch [`av_connect.py`](src/backend/api_services/av_connect.py) nach API-Calls
+
+**Yahoo Finance Daten:**
+- [`create_yf_price_history_entry()`](src/backend/database/db_functions.py): Standard INSERT für Kursdaten
+- [`create_yf_price_history_entry_ml()`](src/backend/database/db_functions.py): Spezialversion für ML-Workflows
+- [`create_yf_company_information_entry()`](src/backend/database/db_functions.py): INSERT für Unternehmensmetadaten
+- [`create_yf_company_from_info(info: dict)`](src/backend/database/db_functions.py): Erstellt Company-Info aus yfinance-Dictionary
+- Verwendung: Durch [`yf_connect.py`](src/backend/api_services/yf_connect.py) zur Datenspeicherung
+
+**Generische Tabellenoperationen:**
+- [`get_table(table_name: str)`](src/backend/database/db_functions.py): SELECT * als Pandas DataFrame
+- [`get_unique_table(table_name: str)`](src/backend/database/db_functions.py): SELECT DISTINCT
+- [`get_unique_table_modded(table_name: str, subset=None)`](src/backend/database/db_functions.py): DISTINCT auf Teilmenge der Spalten
+- [`get_table_names(database_path: str)`](src/backend/database/db_functions.py): Listet Tabellen einer Datenbank
+- [`delete_table(database_path: str, table_name: str)`](src/backend/database/db_functions.py): DROP TABLE
+
+Diese generischen Funktionen abstrahieren SQLAlchemy-Operationen und bieten eine einheitliche Pandas-basierte Schnittstelle, die im gesamten Frontend verwendet wird.
+
+**System-Konfiguration (Key-Value-Store):**
+- [`add_system_config(name: str, value: str, data_type: str, description: str)`](src/backend/database/db_functions.py): Neuen Config-Eintrag anlegen
+- [`get_system_config_by_name(name: str)`](src/backend/database/db_functions.py): Config-Wert auslesen
+- [`get_config_dict(name: str)`](src/backend/database/db_functions.py): Config als Dictionary
+- [`update_system_config(name: str, value: str)`](src/backend/database/db_functions.py): Config aktualisieren
+- [`delete_system_config(name: str)`](src/backend/database/db_functions.py): Config entfernen
+
+Diese Funktionen implementieren einen einfachen Key-Value-Store in SQLite und ermöglichen typsichere Speicherung durch das `data_type`-Feld (Deserialisierung beim Auslesen).
+
+**Listen-Konfiguration (für Ticker-Listen):**
+- [`add_list_system_config(name: str, values: list, description: str)`](src/backend/database/db_functions.py): Liste als JSON speichern
+- [`get_list_system_config(name: str)`](src/backend/database/db_functions.py): JSON zu Python-Liste deserialisieren
+- [`update_list_system_config(name: str, values: list)`](src/backend/database/db_functions.py): Liste aktualisieren
+- [`append_to_list_system_config(name: str, item: str)`](src/backend/database/db_functions.py): Element hinzufügen
+- [`remove_from_list_system_config(name: str, item: str)`](src/backend/database/db_functions.py): Element entfernen
+
+Diese spezialisierten Funktionen vereinfachen die Verwaltung von Listen (z.B. Initial-Ticker-Liste) durch Abstraktion der JSON-Serialisierung.
+
+**Frontend-Abfragen (Yahoo Finance):**
+- [`get_yf_company_info(symbol: str)`](src/backend/database/db_functions.py): Company-Info für einzelnes Symbol
+- [`get_yf_price_history(symbol: str)`](src/backend/database/db_functions.py): Vollständige Kurshistorie
+- [`get_yf_pricing_raw(symbol: str)`](src/backend/database/db_functions.py): Rohe Pricing-Daten
+- [`get_yf_price_history_ml(symbol: str)`](src/backend/database/db_functions.py): Pricing-Daten optimiert für ML
+- [`get_all_yf_price_history()`](src/backend/database/db_functions.py): Kompletter Datensatz aller Symbole
+
+Diese Funktionen sind auf typische Frontend-Anfragen optimiert und liefern vorgefilterte/sortierte DataFrames.
+
+**Symbol-Extraktion:**
+- [`get_symbols_from_table(database_path: str, table_name: str)`](src/backend/database/db_functions.py): Extrahiert eindeutige Symbole aus Tabelle
+- Verwendung: Population von Dropdown-Menüs im Frontend
+
+#### 3.3.1.2 Nutzerdatenbank-Verwaltung (users_database.py)
+
+Das Modul [`users_database.py`](src/backend/database/users_database.py) verwaltet die dynamisch erstellten Nutzertabellen und implementiert spezielle Logik für CSV/Excel-Imports.
+
+**Kernfunktionen:**
+
+**Tabellenerstellung aus Uploads:**
+- Import von CSV/Excel-Dateien
+- Automatische Schema-Inferenz durch Pandas
+- Spaltennormalisierung: Leerzeichen entfernen, Konvertierung zu lowercase, Ersetzung durch Unterstriche
+- Rationale: Vermeidung von SQL-Syntaxproblemen durch einheitliche Namenskonventionen
+
+**CRUD-Operationen:**
+- Auflisten vorhandener Tabellen
+- Auslesen gespeicherter Tabellen als DataFrame
+- Löschen von Tabellen
+- Rationale: Vollständige Kontrolle über Nutzerdaten
+
+Die Trennung dieser Logik von [`db_functions.py`](src/backend/database/db_functions.py) folgt dem **Single Responsibility Principle**: [`db_functions.py`](src/backend/database/db_functions.py) verwaltet Systemdatenbanken, [`users_database.py`](src/backend/database/users_database.py) verwaltet Nutzerdatenbanken.
+
+#### 3.3.1.3 Utility-Funktionen (database_utils.py)
+
+Das Modul [`database_utils.py`](src/backend/database/database_utils.py) stellt übergreifende Hilfsfunktionen bereit.
+
+**[`delete_any_table(table_name: str, source: str)`](src/backend/database/database_utils.py):**
+- Zweck: Vereinheitlichte Löschfunktion für alle Datenbanken
+- Parameter `source`: 'user', 'alphavantage', 'alphavantage_processed', 'yfinance', 'system'
+- Implementierung: Mapping von Source-String zu Datenbankpfad, Delegierung an [`delete_table()`](src/backend/database/db_functions.py)
+- Rationale: Vereinfachung der Löschlogik im Frontend durch Single-Entry-Point
+
+### 3.3.2 Machine Learning Pipeline
+
+Die Machine Learning-Komponenten befinden sich im Ordner [`machine_learning/`](src/backend/machine_learning/). Die dort enthaltenen Module ([`get_training_data.py`](src/backend/machine_learning/get_training_data.py), [`price_predictions.py`](src/backend/machine_learning/price_predictions.py), [`processing_datasets.py`](src/backend/machine_learning/processing_datasets.py), [`training_data.py`](src/backend/machine_learning/training_data.py), [`tree_ml.py`](src/backend/machine_learning/tree_ml.py), [`up_or_down.py`](src/backend/machine_learning/up_or_down.py)) sind in der aktuellen Version nicht aktiv im Frontend eingebunden und werden daher in dieser Dokumentation nicht detailliert beschrieben. Die Module enthalten Vorarbeiten zur Datenextraktion, Datensatzverarbeitung und Algorithmus-Konfiguration, die als Basis für zukünftige ML-Funktionalitäten dienen können.
+
+### 3.3.3 LLM-Integration
+
+#### 3.3.3.1 Verbindungs-Management (llm_functions.py)
+
+Das Modul [`llm_functions.py`](src/backend/llm_functions.py) abstrahiert die Kommunikation mit Ollama und stellt Hilfsfunktionen für Verbindungsprüfung und Konfiguration bereit.
+
+**[`check_connection(base_url: str)`](src/backend/llm_functions.py):**
+- Implementierung: HTTP-GET-Request an Ollama-API
+- Timeout: Kurze Timeout-Dauer zur schnellen Fehlerkennung
+- Verwendung: Vor LLM-Anfragen zur Validierung der Verbindung
+
+**[`ensure_model(base_url: str, model_name: str)`](src/backend/llm_functions.py):**
+- Implementierung: Abfrage der installierten Modelle über Ollama-API
+- Rückgabe: Boolean (True wenn Modell verfügbar)
+- Verwendung: Prävention von Fehlern durch nicht-existente Modelle
+
+**[`base_url_from_choice(choice: str)`](src/backend/llm_functions.py):**
+- Mapping-Logik: String-Choice → URL
+- Unterstützte Szenarien:
+  - Lokale Ollama-Installation
+  - Docker-Container greift auf Host-Ollama zu
+  - Container-zu-Container-Kommunikation
+- Rationale: Flexibles Deployment ohne Code-Änderungen
+
+### 3.3.4 Hilfsfunktionen und Konfiguration
+
+#### 3.3.4.1 Zentrale Datenstrukturen (data_model.py)
+
+Das Modul [`data_model.py`](src/backend/data_model.py) definiert anwendungsweite Konstanten und Standard-Konfigurationen.
+
+**TICKERS-Liste:**
+- Inhalt: Ca. 400 Aktiensymbole
+- Verwendung:
+  - Initiales Datenbank-Setup via [`download_price_history()`](src/backend/api_services/yf_connect.py)
+  - Fallback bei fehlender Custom-Ticker-Liste
+  - Basis für Dropdown-Menüs im Frontend
+  - Referenz in Settings-Seite
+- Rationale: Zentrale Definition vermeidet Inkonsistenzen
+
+**Weitere Strukturen:**
+- Default-Metriken für Analysen
+- ML-Algorithmus-Konfigurationen (falls verwendet)
+
+Die Auslagerung dieser Definitionen in ein separates Modul folgt dem Prinzip der **Konfiguration als Code** und erleichtert Anpassungen ohne Suche im gesamten Codebase.
+
+#### 3.3.4.2 Markdown-Content (markdown.py)
+
+Das Modul [`markdown.py`](src/backend/markdown.py) enthält die Textinhalte für Welcome- und Setup-Seiten als String-Konstanten.
+
+**Funktionen:**
+- `get_welcome_markdown()`: Liefert Welcome-Text
+- `get_setup_markdown()`: Liefert Setup-Anleitung
+
+**Rationale:**
+Auslagerung von UI-Texten aus Frontend-Code verbessert:
+- **Wartbarkeit**: Textänderungen ohne Durchsuchen von UI-Dateien
+- **Wiederverwendbarkeit**: Gleiche Texte können in mehreren Pages verwendet werden
+- **Übersichtlichkeit**: Frontend-Code fokussiert auf Logik statt Content
+
+#### 3.3.4.3 Anwendungsstart (launch.py)
+
+Das Modul [`launch.py`](src/backend/launch.py) dient als Einstiegspunkt für die Docker-Container-Ausführung.
+
+**Funktionalität:**
+- Start der Streamlit-Anwendung mit vordefinierten Parametern
+- Konfiguration von Port und Host
+- Ermöglicht konsistenten Start im Container-Kontext
+
+**Rationale:**
+Zentralisierung der Startkonfiguration vereinfacht Docker-Deployment und vermeidet Hardcoding von Parametern in Dockerfiles.
+
+---
+
+## 3.4 Frontend-Implementierung
+
+### 3.4.1 Streamlit-Architektur
+
+Die Frontend-Implementierung nutzt Streamlit's **Multi-Page-App-Struktur**, bei der Seiten automatisch aus dem [`pages/`](src/frontend/st/pages/)-Ordner geladen werden (Streamlit Inc., 2024). Der Einstiegspunkt ist [`Start.py`](src/frontend/st/Start.py), die als Hauptseite beim Aufruf der Anwendung angezeigt wird.
+
+**Session State Management:**
+
+Streamlit's Session State wird für **transiente UI-Zustände** verwendet, die nur während einer Sitzung relevant sind:
+- Aktuelle Ticker-Auswahl
+- Temporäre API-Keys (Security-Maßnahme)
+- UI-Element-Stati (Expander geöffnet/geschlossen)
+- Zwischenergebnisse von Berechnungen
+
+Für **persistente Zustände** wird stattdessen `system_config.db` verwendet (siehe 3.2.1.4). Diese Hybridstrategie kombiniert die Vorteile beider Ansätze: Session State für Performance, Datenbank für Persistenz.
+
+### 3.4.2 Seitenstruktur
+
+#### 3.4.2.1 Startseite (Start.py)
+
+Die Startseite [`Start.py`](src/frontend/st/Start.py) dient als Einstiegspunkt und umfasst:
+
+**Page Configuration:**
+```python
+st.set_page_config(
+    page_title="Finanzanalyse-Plattform",
+    page_icon="📈",
+    layout="wide"
+)
+```
+
+**Sidebar:**
+- Anzeige des Plattform-Logos aus [`assets/LogoFinsight.png`](src/frontend/st/assets/LogoFinsight.png)
+- Konsistente Darstellung über alle Seiten durch Streamlit's automatische Sidebar-Synchronisation
+
+**Hauptbereich:**
+- **Tab 1 (Welcome)**: Markdown-Content aus [`get_welcome_markdown()`](src/backend/markdown.py)
+- **Tab 2 (Setup)**: Markdown-Content aus [`get_setup_markdown()`](src/backend/markdown.py), API-Key-Eingabe, Ollama-Konfiguration
+
+Die Aufteilung in Tabs (statt separate Seiten) reduziert die Anzahl der Navigation-Items und gruppiert konzeptionell zusammengehörige Inhalte.
+
+#### 3.4.2.2 Datenmanagement (1 Data.py)
+
+Die Seite [`1 Data.py`](src/frontend/st/pages/1 Data.py) implementiert alle datenbezogenen Funktionalitäten:
+
+**Funktionsgruppen:**
+1. **Kursdaten-Visualisierung**: Candlestick-Charts mit Plotly, Volumen-Darstellung
+2. **Unternehmensinfos**: Anzeige von Metadaten aus `yf_company_info`
+3. **Datenladen**: Single-Ticker-Updates, Initial-Data-Load
+4. **Eigene Daten**: CSV/Excel-Upload, Tabellenverwaltung
+
+**Technische Implementierung:**
+- Verwendung von Streamlit-Tabs zur Strukturierung
+- Plotly für interaktive Charts (Zoom, Pan, Hover-Tooltips)
+- Direkte Aufrufe von Backend-Funktionen aus [`db_functions.py`](src/backend/database/db_functions.py) und [`yf_connect.py`](src/backend/api_services/yf_connect.py)
+
+#### 3.4.2.3 Machine Learning (2 Machine Learning.py)
+
+Die Seite [`2 Machine Learning.py`](src/frontend/st/pages/2 Machine Learning.py) bietet die Schnittstelle für ML-Workflows:
+
+**Geplante Funktionalität:**
+- Algorithmus-Auswahl (Dropdown)
+- Parameter-Konfiguration (Streamlit-Widgets)
+- Training-Trigger (Button mit Progress-Bar)
+- Ergebnis-Visualisierung (Metriken, Confusion Matrix, Prediction vs. Actual)
+
+Die konkrete Implementierung dieser Funktionalitäten ist in der aktuellen Version noch ausstehend, da die ML-Module im Backend noch nicht vollständig in die UI integriert sind.
+
+#### 3.4.2.4 LLM Playground (3 LLM Playground.py)
+
+Die Seite [`3 LLM Playground.py`](src/frontend/st/pages/3 LLM Playground.py) ermöglicht Interaktion mit dem LLM:
+
+**Geplante Funktionalität:**
+- Modell-Auswahl (aus verfügbaren Ollama-Modellen)
+- Prompt-Eingabe (Text-Area)
+- Kontextualisierung (Einbindung von Finanzdaten)
+- Response-Darstellung (Streaming oder vollständige Antwort)
+
+#### 3.4.2.5 Assistent (4 Assistant.py)
+
+Die Seite [`4 Assistant.py`](src/frontend/st/pages/4 Assistant.py) implementiert einen Chatbot zur Nutzerunterstützung:
+
+**Geplante Funktionalität:**
+- Chat-Interface (ähnlich ChatGPT-UI)
+- Chat-History-Management (Session State)
+- Hilfe-Prompts für Dashboard-Nutzung
+- Integration mit Ollama via [`ollama_connect.py`](src/backend/api_services/ollama_connect.py)
+
+#### 3.4.2.6 Einstellungen (5 Settings.py)
+
+Die Seite [`5 Settings.py`](src/frontend/st/pages/5 Settings.py) bietet Konfigurationsmöglichkeiten:
+
+**Funktionalitäten:**
+- **Initial-Ticker-Liste-Editor**: Anzeige und Bearbeitung der Ticker-Liste, Speicherung via [`add_list_system_config()`](src/backend/database/db_functions.py)
+- **Ollama-Verbindung**: Auswahl des Verbindungstyps (local/host/container)
+- **ML-Parameter**: Konfiguration von Training-Limits
+- **System-Info**: Anzeige von Last-Update-Timestamps
+
+Die Settings-Seite nutzt intensiv die `system_config.db`-Funktionen, um Einstellungen persistent zu speichern.
+
+### 3.4.3 Asset-Management
+
+**Primärer Asset-Ordner:**
+[`src/frontend/st/assets/`](src/frontend/st/assets/) enthält:
+- Logos (PNG-Dateien)
+- `assistantinfos.txt`: Kontext-Informationen für Assistenten-Prompts
+
+**Fallback-Mechanismus:**
+Der Unterordner [`pages/assets_safety/`](src/frontend/st/pages/assets_safety/) dupliziert kritische Assets. Dies adressiert ein Streamlit-spezifisches Problem: Pages in Unterordnern haben teilweise Probleme mit relativen Pfaden zu Assets im Hauptordner. Der Fallback-Ordner stellt sicher, dass Logos auch bei Pfadproblemen angezeigt werden können.
+
+---
+
+## 3.5 Containerisierung und Deployment
+
+### 3.5.1 Dockerfile
+
+Das [`Dockerfile`](Dockerfile) definiert das Container-Image für die Hauptanwendung:
+
+**Basis-Image:**
+- Python 3.x (Slim-Variante zur Reduktion der Image-Größe)
+
+**System-Dependencies:**
+- Build-Tools für Compilierung von Python-Paketen mit C-Extensions
+- Curl für Healthchecks
+
+**Python-Dependencies:**
+- Installation via [`requirements.txt`](requirements.txt)
+- `--no-cache-dir`-Flag reduziert Image-Größe
+
+**Anwendungscode:**
+- COPY des gesamten Projektverzeichnisses
+
+**Exposed Port:**
+- Port 8501 (Streamlit-Standard)
+
+**Healthcheck:**
+- Periodische Prüfung des Streamlit-Healthcheck-Endpoints
+- Ermöglicht Container-Orchestrierung die Erkennung von Problemen
+
+**Entry Point:**
+- Start via [`launch.py`](src/backend/launch.py)
+
+### 3.5.2 Docker Compose
+
+Die Datei [`docker-compose.yml`](docker-compose.yml) orchestriert zwei Services:
+
+**Service: app**
+- Build-Context: Aktuelles Verzeichnis
+- Port-Mapping: 8501:8501
+- Volumes:
+  - [`./data`](data): Persistierung der Datenbanken
+  - [`./saved_models`](saved_models): Persistierung trainierter ML-Modelle
+- Environment-Variablen: Streamlit-Konfiguration
+- Dependency: Wartet auf Ollama-Service
+
+**Service: ollama**
+- Image: `ollama/ollama:latest` (offizielles Ollama-Image)
+- Port-Mapping: 11434:11434
+- Volume: `ollama_data` für Modell-Persistierung
+- Rationale: Lokale LLM-Ausführung ohne Cloud-Abhängigkeit
+
+**Netzwerk:**
+- Bridge-Netzwerk für Container-zu-Container-Kommunikation
+- Ermöglicht App-Zugriff auf Ollama via Hostname `ollama`
+
+### 3.5.3 Dependency Management
+
+Die Datei [`requirements.txt`](requirements.txt) spezifiziert alle Python-Abhängigkeiten mit **Version-Pinning** zur Gewährleistung reproduzierbarer Builds:
+
+**Zentrale Dependencies:**
+- `streamlit`: Frontend-Framework
+- `pandas`: Datenmanipulation
+- `plotly`: Visualisierung
+- `sqlalchemy`: ORM
+- `yfinance`: Yahoo Finance API-Client
+- `requests`: HTTP-Client
+- `scikit-learn`: ML-Framework
+
+Die explizite Versionsspezifikation vermeidet Breaking Changes durch automatische Updates und stellt sicher, dass die Anwendung in verschiedenen Umgebungen identisch funktioniert.
+
+### 3.5.4 Deployment-Prozess
+
+**Build:**
+```bash
+docker-compose build
+```
+Erstellt Container-Images basierend auf Dockerfile-Definitionen.
+
+**Start:**
+```bash
+docker-compose up -d
+```
+Startet Services im Detached-Modus (Hintergrund).
+
+**Logs:**
+```bash
+docker-compose logs -f app
+```
+Zeigt Anwendungs-Logs in Echtzeit (Follow-Modus).
+
+**Stop:**
+```bash
+docker-compose down
+```
+Stoppt und entfernt Container (Volumes bleiben erhalten).
+
+**Vollständiges Reset:**
+```bash
+docker-compose down -v
+```
+Entfernt auch Volumes (Datenverlust!), nützlich für Clean-State.
+
+---
+
+## 3.6 Besondere Implementierungsherausforderungen
+
+### 3.6.1 API Rate Limiting
+
+**Problem:**
+Alpha Vantage's Rate Limits (25 Requests/Tag, 5/Minute) machen das Laden von 400 Initial-Tickern unmöglich ohne Multi-Tages-Prozess.
+
+**Implementierte Lösung:**
+- Schutzmechanismen in [`av_connect.py`](src/backend/api_services/av_connect.py) zur Einhaltung der Limits
+- Nutzer-Warnung bei erwartetem Limit-Erreichen
+- Priorisierung: Nur relevante Ticker aktualisieren statt vollständiger Liste
+
+**Alternative Lösungsansätze (nicht implementiert):**
+- Premium API-Key für höhere Limits
+- Alternative Datenquellen (z.B. IEX Cloud) für Bulk-Downloads
+- Daten-Caching und seltene Updates
+
+### 3.6.2 Zeitreihen-spezifische Herausforderungen
+
+**Problem: Data Leakage**
+Bei Zeitreihen darf keine zufällige Train/Test-Aufteilung erfolgen, da dies "Zukunftswissen" in Trainingsdaten einbringt und unrealistisch optimistische Metriken erzeugt (Bergmeir & Benítez, 2012).
+
+**Korrekte Lösung:**
+- **Time-based Split**: Trainingsdaten aus früheren Zeiträumen, Testdaten aus späteren
+- Beispiel: Training auf 2020-2023, Test auf 2024
+- Keine Shuffle-Operation bei Zeitreihen-Daten
+
+**Problem: Feature Engineering mit Lookback**
+Technische Indikatoren (gleitende Durchschnitte, RSI) benötigen historische Fenster, wodurch initiale Zeilen NaN-Werte enthalten.
+
+**Lösungsansätze:**
+- **Dropna**: Entfernung von Zeilen mit NaNs (Datenverlust)
+- **Forward-Fill**: Nicht sinnvoll bei technischen Indikatoren
+- **Minimale Lookback-Period**: Daten erst ab ausreichender Historie verwenden
+
+### 3.6.3 SQLite-Performance bei großen Datensätzen
+
+**Problem:**
+Die `yf_pricing_history`-Tabelle enthält mehrere Millionen Datensätze, was Abfragen verlangsamen kann.
+
+**Implementierte Optimierungen:**
+- **Primary Key auf (symbol, date)**: Automatischer Index von SQLite
+- **Gefilterte Abfragen**: [`get_yf_price_history(symbol)`](src/backend/database/db_functions.py) lädt nur relevante Daten
+
+**Weitere mögliche Optimierungen (nicht implementiert):**
+- Zusätzliche Indizes auf häufig gefilterten Spalten
+- Partitionierung großer Tabellen nach Jahr
+- Pagination bei Frontend-Abfragen
+- Migration zu PostgreSQL für bessere Performance bei Millionen Datensätzen
+
+### 3.6.4 Streamlit Session State vs. Persistenz
+
+**Problem:**
+Streamlit's Session State wird bei jedem Neustart zurückgesetzt. Kritische Einstellungen (z.B. ausgewähltes LLM-Modell) gehen verloren.
+
+**Implementierte Lösung: Hybridansatz**
+
+**Session State für:**
+- Temporäre UI-Zustände (Expander, Tabs)
+- Aktuelle Selektionen (Ticker, Algorithmus)
+- Zwischenergebnisse
+
+**system_config.db für:**
+- Gewähltes LLM-Modell
+- Custom Initial-Ticker-Liste
+- ML-Training-Parameter
+- Last-Update-Timestamps
+
+Diese Strategie kombiniert Performance (Session State ist schneller als DB-Zugriffe) mit Persistenz (wichtige Einstellungen überdauern Neustarts).
+
+### 3.6.5 LLM-Integration: Modellgröße vs. Hardware
+
+**Problem:**
+Moderne LLMs mit Milliarden Parametern erfordern erheblichen RAM (z.B. 7B-Modell ≈ 8-16GB RAM ohne Quantisierung).
+
+**Implementierte Lösung:**
+- Nutzung von Ollama's **Quantisierung** (4-Bit, 8-Bit) zur Reduktion des Speicherbedarfs
+- Nutzer-Information über Hardwareanforderungen verschiedener Modelle
+- Flexibilität bei Modellauswahl (kleinere Modelle für eingeschränkte Hardware)
+
+**Nicht-implementierte Alternativen:**
+- Cloud-basierte LLM-APIs (Datenschutz-Bedenken)
+- Model-Offloading (Teile des Modells auf CPU/GPU verteilen)
+
+---
+
+## 3.7 Code-Qualität und Wartbarkeit
+
+### 3.7.1 Error Handling
+
+**Strategie:**
+Alle kritischen Operationen (Datenbankzugriffe, API-Calls, Datei-I/O) sind mit Try-Except-Blöcken abgesichert. Fehler werden geloggt und dem Nutzer über Streamlit's `st.error()` kommuniziert.
+
+**Typische Error-Handling-Struktur:**
+```python
+try:
+    # Kritische Operation
+    result = database_operation()
+except SpecificException as e:
+    logging.error(f"Detaillierte Fehlermeldung: {e}")
+    st.error("Nutzerfreundliche Fehlermeldung")
+    # Graceful Degradation oder Fallback
+```
+
+### 3.7.2 Logging
+
+**Verwendung:**
+Python's `logging`-Modul für Backend-Protokollierung mit konfigurierbaren Log-Levels.
+
+**Kritische Logs:**
+- API-Request-Fehler
+- Datenbank-Operationen
+- Daten-Update-Prozesse (Erfolg/Fehler pro Ticker)
+
+**Security:**
+Sensible Daten (API-Keys) werden aus Logs gefiltert.
+
+### 3.7.3 Code-Dokumentation
+
+**Docstrings:**
+Alle Funktionen in Backend-Modulen enthalten Docstrings nach Google-Style-Konvention:
+- Kurzbeschreibung
+- Detaillierte Erklärung
+- Args-Sektion
+- Returns-Sektion
+- Beispiele (wo sinnvoll)
+
+**Kommentare:**
+Komplexe Logik wird inline kommentiert, insbesondere bei:
+- Nicht-trivialem Feature Engineering
+- Datenbankschema-spezifischen Operationen
+- Workarounds für Library-Limitierungen
+
+### 3.7.4 Modularität und Wiederverwendbarkeit
+
+Die Implementierung folgt konsequent dem **DRY-Prinzip** (Don't Repeat Yourself):
+- Zentrale Datenzugriffsfunktionen in [`db_functions.py`](src/backend/database/db_functions.py)
+- Wiederverwendbare API-Call-Wrapper
+- Gemeinsame Utility-Funktionen
+
+Dies reduziert Code-Duplikation und vereinfacht Wartung (Änderungen nur an einer Stelle notwendig).
+
+---
+
+
+
 
 ## Literatur:
 - Berk, Jonathan B.; DeMarzo, Peter M. 2015: Grundlagen der Finanzwirtschaft: Analyse, Entscheidung und Umsetzung, 3., aktualisierte Aufl., Pearson Deutschland GmbH
@@ -518,3 +1415,17 @@ In der aktuellen Implementierung erfolgt beim Upload lediglich eine grundlegende
 - Dettmers, T., et al. (2022). LLM.int8(): 8-bit matrix multiplication for transformers at scale. Advances in Neural Information Processing Systems, 35.
 - Wu, S., et al. (2023). BloombergGPT: A Large Language Model for Finance. arXiv preprint arXiv:2303.17564.
 - Ollama (2024). Ollama Documentation. https://ollama.ai/
+- Alur, D., Crupi, J., & Malks, D. (2001). Core J2EE Patterns: Best Practices and Design Strategies. Prentice Hall.
+- Bergmeir, C., & Benítez, J. M. (2012). On the use of cross-validation for time series predictor evaluation. Information Sciences, 191, 192-213.
+- Buschmann, F., Meunier, R., Rohnert, H., Sommerlad, P., & Stal, M. (1996). Pattern-Oriented Software Architecture: A System of Patterns. Wiley.
+- Codd, E. F. (1970). A relational model of data for large shared data banks. Communications of the ACM, 13(6), 377-387.
+- Fowler, M. (2002). Patterns of Enterprise Application Architecture. Addison-Wesley.
+- Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (1994). Design Patterns: Elements of Reusable Object-Oriented Software. Addison-Wesley.
+- Inmon, W. H. (2005). Building the Data Warehouse (4th ed.). Wiley.
+- Martin, R. C. (2017). Clean Architecture: A Craftsman's Guide to Software Structure and Design. Prentice Hall.
+- Sommerville, I. (2015). Software Engineering (10th ed.). Pearson.
+- Streamlit Inc. (2024). Streamlit Documentation. https://docs.streamlit.io
+- Yahoo Finance (2024). Adjusted Close Definition. https://finance.yahoo.com
+
+Hinweis: Alle relativen Pfadangaben in diesem Dokument (z.B. db_functions.py) sind als Hyperlinks konzipiert, die bei Anzeige im Repository direkt zu den entsprechenden Dateien führen.
+
