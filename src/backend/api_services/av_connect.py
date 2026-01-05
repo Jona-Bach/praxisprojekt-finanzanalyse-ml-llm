@@ -4,12 +4,17 @@ import requests
 import json
 from ..data_model import initial_tickers
 import time
+import streamlit as st
 from ..database.db_functions import create_av_raw_entry, create_av_pricing_entry
 load_dotenv()
 
 
 BASE_URL = "https://www.alphavantage.co/query"
-API_KEY = os.getenv("API_KEY_AV")
+API_KEY = st.session_state.get("alphavantage_key")
+
+
+
+
 
 # Wie lange VOR jedem Request gewartet wird (in Sekunden)
 ALPHAVANTAGE_BASE_SLEEP = 20  # z.B. 20 Sekunden
@@ -21,7 +26,39 @@ symbol = initial_tickers[0]
 
 def av_request(params, sleep_before: float = ALPHAVANTAGE_BASE_SLEEP):
     """Hilfsfunktion: API-Aufruf mit bewusst langer Wartezeit."""
+    API_KEY = st.session_state.get("alphavantage_key")
     params["apikey"] = API_KEY
+
+    
+
+    if not API_KEY:
+        st.warning("No Alphavantage Key found!")
+        st.stop()
+
+    r = requests.get(
+        "https://www.alphavantage.co/query",
+        params={"function": "GLOBAL_QUOTE", "symbol": "IBM", "apikey": API_KEY},
+        timeout=10,
+    )
+
+    if r.status_code != 200:
+        st.error(f"HTTP error: {r.status_code}")
+        st.stop()
+
+    data_key = r.json()
+
+    # AlphaVantage-Fehlerfälle trotz HTTP 200:
+    if "Error Message" in data_key or "Information" in data_key or "Note" in data_key:
+        st.error("No valid Alphavantage API-Key (or rate limit hit).")
+        st.write(data)
+        st.stop()
+
+    # Erfolg: "Global Quote" vorhanden?
+    if "Global Quote" not in data_key or not data_key["Global Quote"]:
+        st.error("Unexpected response from AlphaVantage.")
+        st.write(data)
+        st.stop()
+
 
     # Basis-Wartezeit vor jedem Request
     if sleep_before and sleep_before > 0:
@@ -290,5 +327,5 @@ def fetch_alphavantage_price_today(symbol: str):
         split_coefficient=values.get("8. split coefficient"),
     )
 
-    print(f"✔ Heutiger Preis für {symbol} gespeichert: {latest_date}")
+    print(f"✔ Price for {symbol} saved: {latest_date}")
     return entry

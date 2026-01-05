@@ -491,15 +491,15 @@ In der aktuellen Implementierung erfolgt beim Upload lediglich eine grundlegende
 
 ---
 
-# 3. Implementierung
+# 4. Implementierung
 
 Die Implementierung der Finanzanalyse-Plattform erfolgte auf Basis einer modularen Softwarearchitektur mit klarer Trennung zwischen Datenhaltung, Backend-Logik und Frontend-Präsentation. Im Folgenden werden die technische Umsetzung, zentrale Designentscheidungen und die Struktur der implementierten Komponenten beschrieben.
 
-## 3.1 Systemarchitektur und Technologie-Stack
+## 4.1 Systemarchitektur und Technologie-Stack
 
-### 3.1.1 Architekturkonzept
+### 4.1.1 Architekturkonzept
 
-Die Plattform folgt einer **Drei-Schichten-Architektur**, die eine strikte Separation of Concerns gewährleistet (Sommerville, 2015). Diese Architekturentscheidung ermöglicht eine unabhängige Entwicklung und Wartung einzelner Komponenten sowie eine flexible Erweiterbarkeit des Systems.
+Die Plattform folgt einer **Drei-Schichten-Architektur**. Diese Architekturentscheidung ermöglicht eine unabhängige Entwicklung und Wartung einzelner Komponenten sowie eine flexible Erweiterbarkeit des Systems.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -537,7 +537,7 @@ Die Plattform folgt einer **Drei-Schichten-Architektur**, die eine strikte Separ
 
 Die Wahl einer Schichtenarchitektur bietet mehrere Vorteile: Änderungen in der Datenbankstruktur können isoliert in der Datenhaltungsschicht vorgenommen werden, ohne Frontend-Code anzupassen. Die Backend-Logik kann unabhängig von der UI getestet werden, und einzelne Komponenten lassen sich bei Bedarf durch alternative Implementierungen ersetzen.
 
-### 3.1.2 Technologie-Stack
+### 4.1.2 Technologie-Stack
 
 Die Auswahl der Technologien erfolgte unter Berücksichtigung der Projektanforderungen, der Verfügbarkeit von Bibliotheken für Finanzanalysen und der Entwicklungsgeschwindigkeit:
 
@@ -549,7 +549,7 @@ Die Auswahl der Technologien erfolgte unter Berücksichtigung der Projektanforde
 | **ORM** | SQLAlchemy | - | Abstraktionsschicht für Datenbankzugriffe, Schutz vor SQL-Injection |
 | **ML-Framework** | Scikit-Learn | - | Standardisierte API, breite Algorithmenauswahl, gut dokumentiert |
 | **Visualisierung** | Plotly | - | Interaktive Charts mit JavaScript-Rendering, native Streamlit-Integration |
-| **API-Client (Finanzdaten)** | yfinance | - | Bewährte Bibliothek für Yahoo Finance API, kostenlos und ohne API-Key |
+| **API-Client (Finanzdaten)** | yfinance, Alphavantage | - | Bewährte Bibliotheken für Finance, kostenlos und ohne API-Key + API-Key pflichtig |
 | **HTTP-Client** | requests | - | Standard-Bibliothek für HTTP-Anfragen (Alpha Vantage API) |
 | **LLM-Framework** | Ollama | - | Lokale LLM-Ausführung, datenschutzfreundlich, keine Cloud-Abhängigkeit |
 | **Containerisierung** | Docker, Docker Compose | - | Reproduzierbare Deployment-Umgebung, vereinfachte Installation |
@@ -558,7 +558,7 @@ Die Entscheidung für SQLite als Datenbanksystem basiert auf der Eignung für Ei
 
 Streamlit wurde gegenüber Alternativen wie Dash oder Flask bevorzugt, da es die schnellste Entwicklung interaktiver Dashboards ermöglicht und eine native Integration von Data Science-Bibliotheken bietet (Streamlit Inc., 2024).
 
-### 3.1.3 Projektstruktur
+### 4.1.3 Projektstruktur
 
 Die Implementierung folgt einer hierarchischen Ordnerstruktur, die eine klare Trennung von Verantwortlichkeiten gewährleistet:
 
@@ -608,22 +608,22 @@ PRAXISP_SOURCE/
 └── requirements.txt               # Python-Dependencies
 ```
 
-Diese Struktur implementiert das **Package-by-Feature-Prinzip** auf oberster Ebene (Backend/Frontend) und das **Package-by-Layer-Prinzip** innerhalb des Backends (API Services, Data Processing, Database, ML). Dies ermöglicht eine intuitive Navigation und erleichtert die Lokalisierung spezifischer Funktionalitäten (Martin, 2017).
+Diese Struktur implementiert das **Package-by-Feature-Prinzip** auf oberster Ebene (Backend/Frontend) und das **Package-by-Layer-Prinzip** innerhalb des Backends (API Services, Data Processing, Database, ML). Dies erleichtert den Zugriff auf einzelne Komponenten.
 
 ---
 
-## 3.2 Dateninfrastruktur
+## 4.2 Dateninfrastruktur
 
-### 3.2.1 Datenbankdesign und -struktur
+### 4.2.1 Datenbankdesign und -struktur
 
-Die Datenhaltung basiert auf **fünf separaten SQLite-Datenbanken**, die jeweils unterschiedliche Datendomänen abdecken. Diese Aufteilung folgt dem Prinzip der **fachlichen Kohäsion** (Fowler, 2002) und ermöglicht eine klare Trennung von Rohdaten, verarbeiteten Daten, Nutzerdaten und Systemkonfigurationen.
+Die Datenhaltung basiert auf **fünf separaten SQLite-Datenbanken**, die jeweils unterschiedliche Datendomänen abdecken. Diese Aufteilung ermöglicht eine klare Trennung von Rohdaten, verarbeiteten Daten, Nutzerdaten und Systemkonfigurationen.
 
-#### 3.2.1.1 alphavantage.db (Rohdaten)
+#### 4.2.1.1 alphavantage.db (Rohdaten)
 
 Diese Datenbank dient als Speicher für unverarbeitete Daten aus der Alpha Vantage API und enthält zwei Haupttabellen:
 
 **Tabelle: `alphavantage_daily_pricing`**
-- Funktion: Speicherung historischer Kurszeitreihen
+- Funktion: Speicherung von Kurszeitreihen
 - Struktur: OHLCV-Format (Open, High, Low, Close, Volume) plus Adjusted Close
 - Primary Key: Composite Key aus `(symbol, date)`
 - Datenherkunft: Alpha Vantage API Endpoint `TIME_SERIES_DAILY_ADJUSTED`
@@ -634,9 +634,9 @@ Diese Datenbank dient als Speicher für unverarbeitete Daten aus der Alpha Vanta
 - Primary Key: `symbol`
 - Besonderheit: Enthält zahlreiche Spalten, von denen viele überwiegend NULL-Werte aufweisen
 
-Die bewusste Trennung zwischen Kurs- und KPI-Daten folgt dem Prinzip der **Normalisierung** (Codd, 1970) und vermeidet Redundanzen, da Kursdaten eine Zeitreihendimension besitzen, während KPIs typischerweise statisch für ein Unternehmen sind.
+Die bewusste Trennung zwischen Kurs- und KPI-Daten folgt dem Prinzip der **Normalisierung** und vermeidet Wiederholungen, da Kursdaten eine Zeitreihendimension besitzen, während KPIs typischerweise statisch für ein Unternehmen sind.
 
-#### 3.2.1.2 alphavantage_processed.db (Verarbeitete Daten)
+#### 4.2.1.2 alphavantage_processed.db (Verarbeitete Daten)
 
 Diese Datenbank enthält bereinigte Varianten der Alpha Vantage-Rohdaten:
 
@@ -650,9 +650,9 @@ Diese Datenbank enthält bereinigte Varianten der Alpha Vantage-Rohdaten:
 - Verarbeitung: Entfernung von Spalten mit >80% NULL-Werten
 - Rationale: Reduzierung des Datenvolumens und Fokussierung auf tatsächlich verfügbare Kennzahlen
 
-Die Existenz einer separaten "processed"-Datenbank implementiert das **Data Lake vs. Data Warehouse**-Konzept im Kleinen: Rohdaten bleiben unverändert erhalten (Data Lake), während verarbeitete Daten für Analysen optimiert werden (Data Warehouse) (Inmon, 2005).
+Die Existenz einer separaten "processed"-Datenbank implementiert das **Data Lake vs. Data Warehouse**-Konzept im Kleinen: Rohdaten bleiben unverändert erhalten (Data Lake), während verarbeitete Daten für Analysen optimiert werden (Data Warehouse).
 
-#### 3.2.1.3 yfinance.db (Yahoo Finance Daten)
+#### 4.2.1.3 yfinance.db (Yahoo Finance Daten)
 
 Dies ist die umfangreichste Datenbank mit historischen Daten für die Initial-Ticker-Liste von ca. 400 Aktien:
 
@@ -672,12 +672,12 @@ Dies ist die umfangreichste Datenbank mit historischen Daten für die Initial-Ti
 
 Die Größe dieser Datenbank (mehrere Millionen Datensätze) erfordert besondere Aufmerksamkeit hinsichtlich Query-Performance, wofür SQLite-Indizes auf den Primary Keys automatisch angelegt werden.
 
-#### 3.2.1.4 system_config.db (Persistente Konfiguration)
+#### 4.2.1.4 system_config.db (Persistente Konfiguration)
 
 Diese Datenbank implementiert einen **Key-Value-Store** für anwendungsweite Einstellungen:
 
 **Tabelle: `global_config`**
-- Struktur: `name` (TEXT, Primary Key), `value` (TEXT), `data_type` (TEXT), `description` (TEXT)
+- Struktur: `ID` (Integer, Primary Key), `name` (TEXT), `Value` (TEXT), `Tag` (Bool)
 - Funktion: Persistierung von Einstellungen über Streamlit-Neustarts hinweg
 - Typische Inhalte:
   - Button-Status-Flags (technische Absicherung gegen Session State-Verlust)
@@ -688,7 +688,7 @@ Diese Datenbank implementiert einen **Key-Value-Store** für anwendungsweite Ein
 
 Die Implementierung eines eigenen Konfigurationssystems war notwendig, da Streamlit's Session State bei jedem Neustart zurückgesetzt wird. Durch Speicherung kritischer Konfigurationen in SQLite wird Persistenz gewährleistet, während gleichzeitig der Session State für transiente UI-Zustände verwendet werden kann (Hybridansatz).
 
-#### 3.2.1.5 users_database.db (Nutzerdaten)
+#### 4.2.1.5 users_database.db (Nutzerdaten)
 
 Diese Datenbank enthält dynamisch erstellte Tabellen aus Nutzer-Uploads:
 
@@ -699,7 +699,7 @@ Diese Datenbank enthält dynamisch erstellte Tabellen aus Nutzer-Uploads:
 
 Die Trennung der Nutzerdatenbank von Systemdatenbanken folgt dem **Principle of Least Privilege**: Nutzer können nur in ihrer eigenen Datenbank Tabellen anlegen/löschen, ohne Systemdaten zu gefährden.
 
-#### 3.2.1.6 Datenbankzugriff via SQLAlchemy
+#### 4.2.1.6 Datenbankzugriff via SQLAlchemy
 
 Alle Datenbankoperationen erfolgen ausschließlich über SQLAlchemy als Object-Relational Mapping (ORM) Framework. Dies bietet mehrere Vorteile:
 
@@ -708,11 +708,11 @@ Alle Datenbankoperationen erfolgen ausschließlich über SQLAlchemy als Object-R
 3. **Pythonic API**: Datenbankzugriffe folgen Python-Konventionen
 4. **Automatische Typkonvertierung**: Mapping zwischen SQL- und Python-Typen
 
-Die zentrale Abstraktion erfolgt über das Modul [`db_functions.py`](src/backend/database/db_functions.py), das alle CRUD-Operationen kapselt und dem Frontend eine konsistente Schnittstelle bietet.
+Die hauptsächliche zentrale Abstraktion erfolgt über das Modul [`db_functions.py`](src/backend/database/db_functions.py), das alle CRUD-Operationen kapselt und dem Frontend eine konsistente Schnittstelle bietet.
 
-### 3.2.2 API-Integration
+### 4.2.2 API-Integration
 
-#### 3.2.2.1 Alpha Vantage API (av_connect.py)
+#### 4.2.2.1 Alpha Vantage API (av_connect.py)
 
 Die Alpha Vantage API dient als Quelle für fundamentale Unternehmenskennzahlen und historische Kursdaten. Die Implementierung befindet sich in [`av_connect.py`](src/backend/api_services/av_connect.py).
 
@@ -1415,15 +1415,6 @@ Dies reduziert Code-Duplikation und vereinfacht Wartung (Änderungen nur an eine
 - Dettmers, T., et al. (2022). LLM.int8(): 8-bit matrix multiplication for transformers at scale. Advances in Neural Information Processing Systems, 35.
 - Wu, S., et al. (2023). BloombergGPT: A Large Language Model for Finance. arXiv preprint arXiv:2303.17564.
 - Ollama (2024). Ollama Documentation. https://ollama.ai/
-- Alur, D., Crupi, J., & Malks, D. (2001). Core J2EE Patterns: Best Practices and Design Strategies. Prentice Hall.
-- Bergmeir, C., & Benítez, J. M. (2012). On the use of cross-validation for time series predictor evaluation. Information Sciences, 191, 192-213.
-- Buschmann, F., Meunier, R., Rohnert, H., Sommerlad, P., & Stal, M. (1996). Pattern-Oriented Software Architecture: A System of Patterns. Wiley.
-- Codd, E. F. (1970). A relational model of data for large shared data banks. Communications of the ACM, 13(6), 377-387.
-- Fowler, M. (2002). Patterns of Enterprise Application Architecture. Addison-Wesley.
-- Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (1994). Design Patterns: Elements of Reusable Object-Oriented Software. Addison-Wesley.
-- Inmon, W. H. (2005). Building the Data Warehouse (4th ed.). Wiley.
-- Martin, R. C. (2017). Clean Architecture: A Craftsman's Guide to Software Structure and Design. Prentice Hall.
-- Sommerville, I. (2015). Software Engineering (10th ed.). Pearson.
 - Streamlit Inc. (2024). Streamlit Documentation. https://docs.streamlit.io
 - Yahoo Finance (2024). Adjusted Close Definition. https://finance.yahoo.com
 

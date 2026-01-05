@@ -79,6 +79,17 @@ with st.expander("Global Settings"):
             except Exception as e:
                 st.error(e)
 
+    st.divider()
+    st.header("Alphavantage Key:")
+
+    av_key = st.text_input("Alphavantage Key (will not be stored permanently!)")
+
+    if st.button("Set Alphavantage Key!"):
+        if av_key:  # nur setzen, wenn wirklich was eingegeben wurde
+            st.session_state["alphavantage_key"] = av_key
+            st.success("Key stored")
+        else:
+            st.warning("Bitte gib zuerst einen Key ein.")
 
 
 
