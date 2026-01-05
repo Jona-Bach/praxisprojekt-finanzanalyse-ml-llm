@@ -274,7 +274,6 @@ Ein spezifischer Anwendungsfall im Finanzbereich ist die Richtungsklassifikation
 
 Die Bewertung der Modellleistung erfolgt anhand quantitativer Metriken, die je nach Aufgabenstellung (Regression oder Klassifikation) variieren.
 
-**Klassifikationsmetriken**
 
 **Accuracy (Genauigkeit)**: Die Accuracy gibt den Anteil korrekt klassifizierter Instanzen an allen Vorhersagen an. Sie wird berechnet als:
 
@@ -288,15 +287,6 @@ Obwohl Accuracy intuitiv verständlich ist, kann sie bei unbalancierten Datensä
 
 Im Finanzkontext bedeutet eine hohe Precision, dass bei einer Vorhersage "Kursanstieg" dieser auch tatsächlich mit hoher Wahrscheinlichkeit eintritt (Sokolova & Lapalme, 2009).
 
-**Recall (Sensitivität)**: Der Recall gibt an, welcher Anteil der tatsächlich positiven Fälle vom Modell erkannt wurde:
-
-**Recall = True Positives / (True Positives + False Negatives)**
-
-Ein hoher Recall ist wichtig, wenn das Verpassen positiver Fälle kritisch ist, beispielsweise bei der Identifikation profitabler Handelsmöglichkeiten.
-
-**F1-Score**: Der F1-Score ist das harmonische Mittel aus Precision und Recall und bietet eine ausgewogene Metrik, die beide Aspekte berücksichtigt:
-
-**F1 = 2 × (Precision × Recall) / (Precision + Recall)**
 
 **Regressionsmetriken**
 
@@ -312,15 +302,75 @@ Durch die Quadrierung werden größere Fehler stärker gewichtet, was das MSE se
 
 Im Finanzkontext repräsentiert der RMSE die durchschnittliche absolute Abweichung der Kursprognose in Währungseinheiten, was die Interpretation erleichtert.
 
-**Mean Absolute Error (MAE)**: Der mittlere Absolutfehler berechnet die durchschnittliche absolute Abweichung:
+Hier ist die überarbeitete und erweiterte Version des LLM-Abschnitts:
 
-**MAE = (1/n) × Σ|y_i - ŷ_i|**
+---
 
-Im Gegensatz zum MSE gewichtet der MAE alle Fehler linear und ist weniger sensitiv gegenüber Ausreißern. *Bei der Regression sind die am häufigsten verwendeten Werte r2 für den R²-Score, mean_squared_error für den mittleren quadratischen Fehler und mean_absolute_error für den mittleren Absolutfehler* (Müller & Guido, 2017).
+### 2.3 Large Language Models (LLMs)
 
-**R²-Score (Bestimmtheitsmaß)**: Der R²-Score gibt an, welcher Anteil der Varianz in den Daten durch das Modell erklärt wird. Ein R²-Wert von 1 bedeutet perfekte Vorhersagen, während Werte nahe 0 auf ein Modell hindeuten, das nicht besser als der Durchschnittswert abschneidet. Negative R²-Werte sind möglich und indizieren eine schlechtere Performance als eine triviale Baseline (Durchschnittswertvorhersage).
+Large Language Models stellen eine zentrale Komponente dieser Plattform dar und ermöglichen einen innovativen Vergleich zwischen traditionellen Machine Learning-Verfahren und modernen generativen KI-Ansätzen für die Finanzanalyse. Im Folgenden werden die grundlegenden Konzepte von LLMs sowie die verwendete Infrastruktur erläutert.
 
-Die Auswahl der geeigneten Metrik hängt von der spezifischen Aufgabenstellung und den Kosten unterschiedlicher Fehlertypen ab. In der vorliegenden Plattform werden diese Metriken den Nutzern transparent dargestellt, wobei die Interpretation und daraus abgeleitete Handlungsentscheidungen in der Verantwortung der Nutzer liegen.
+#### 2.3.1 Grundlagen von Large Language Models
+
+Large Language Models sind auf Basis neuronaler Netze trainierte Modelle, die darauf spezialisiert sind, natürliche Sprache zu verstehen und zu generieren. Diese Modelle basieren überwiegend auf der Transformer-Architektur, die 2017 von Vaswani et al. eingeführt wurde und die Verarbeitung sequenzieller Daten durch Attention-Mechanismen revolutionierte (Vaswani et al., 2017).
+
+**Funktionsweise und Architektur**
+
+LLMs generieren Text durch probabilistische Vorhersage des nächstwahrscheinlichsten Tokens (Wort oder Wortfragment) basierend auf dem vorherigen Kontext. Dieser Prozess wird autoregressive Textgeneration genannt, bei der das Modell iterativ Wahrscheinlichkeitsverteilungen über mögliche nächste Tokens berechnet (Brown et al., 2020). Die Modelle werden mit riesigen Textkorpora trainiert, die oft hunderte Milliarden bis Billionen von Tokens umfassen, und bestehen aus Milliarden von Parametern – Gewichtungen in den neuronalen Netzen, die während des Trainings optimiert werden.
+
+**Fähigkeiten und Anwendungen**
+
+Moderne LLMs zeigen bemerkenswerte Fähigkeiten, die über einfache Textgenerierung hinausgehen:
+
+- **Sprachverständnis und -generierung**: Fähigkeit, menschenähnliche Texte zu produzieren und komplexe sprachliche Strukturen zu verstehen
+- **Reasoning und Problemlösung**: Durchführung logischer Schlussfolgerungen und Lösung mathematischer Aufgaben durch im Training erworbene Muster (Wei et al., 2022)
+- **Kontextverarbeitung**: Verarbeitung und Integration von Informationen über längere Textpassagen hinweg
+- **Few-Shot und Zero-Shot Learning**: Anpassung an neue Aufgaben mit wenigen oder ohne spezifische Trainingsbeispiele (Brown et al., 2020)
+
+Im Kontext dieser Plattform werden LLMs genutzt, um Finanzdaten zu analysieren, Muster zu identifizieren und textbasierte Insights zu generieren. Ein wesentlicher Vorteil gegenüber traditionellen ML-Algorithmen ist die Fähigkeit, zusätzliches Kontextwissen wie politische Ereignisse, Nachrichtenmeldungen oder Unternehmensberichte in die Analyse zu integrieren.
+
+**Abgrenzung zu anderen neuronalen Netzarchitekturen**
+
+Während LLMs auf Textverarbeitung spezialisiert sind, existieren weitere spezialisierte Architekturen für andere Modalitäten:
+
+- **Convolutional Neural Networks (CNNs)**: Optimiert für Bilderkennung und -klassifikation durch hierarchische Feature-Extraktion (LeCun et al., 1998)
+- **Generative Adversarial Networks (GANs)**: Bestehend aus Generator und Diskriminator zur Generierung neuer Bilder durch adversariales Training (Goodfellow et al., 2014)
+- **Diffusionsmodelle**: Generieren Bilder durch iterative Entrauschung, beginnend von Zufallsrauschen (Ho et al., 2020)
+
+Die Transformer-Architektur, auf der die meisten modernen LLMs basieren, hat sich aufgrund ihrer Skalierbarkeit und der Effizienz des Attention-Mechanismus als besonders erfolgreich für Sprachmodellierung erwiesen (Devlin et al., 2019).
+
+#### 2.3.2 Ollama als lokale LLM-Infrastruktur
+
+Die Größe moderner LLMs stellt eine erhebliche Herausforderung für deren Einsatz dar. Modelle wie GPT-3 mit 175 Milliarden Parametern oder größere Open-Source-Modelle können mehrere hundert Gigabyte Speicherplatz beanspruchen und erfordern für die Inferenz erhebliche Rechenressourcen, typischerweise spezialisierte GPU-Hardware (Brown et al., 2020). Dies macht den Einsatz solcher Modelle auf consumer-grade Hardware ohne weitere Optimierungen praktisch unmöglich.
+
+**Ollama: Lokale LLM-Ausführung**
+
+Ollama ist eine Open-Source-Plattform, die es ermöglicht, Large Language Models lokal auf Standard-Hardware auszuführen. Die Plattform abstrahiert die technische Komplexität der Modellausführung und implementiert verschiedene Optimierungstechniken, um LLMs auch auf weniger leistungsfähiger Hardware nutzbar zu machen (Ollama, 2024).
+
+**Optimierungstechniken**
+
+Ollama nutzt mehrere Verfahren zur Reduktion der Ressourcenanforderungen:
+
+1. **Quantisierung**: Reduzierung der numerischen Präzision der Modellparameter von typischerweise 32-Bit oder 16-Bit Gleitkommazahlen auf 8-Bit, 4-Bit oder sogar niedrigere Präzision. Dies reduziert den Speicherbedarf und beschleunigt Berechnungen bei nur geringem Genauigkeitsverlust (Dettmers et al., 2022). Beispielsweise kann ein Modell mit 7 Milliarden Parametern durch 4-Bit-Quantisierung von circa 28 GB auf etwa 4 GB komprimiert werden.
+
+2. **CPU-Fallback**: Ollama ermöglicht die Ausführung von Modellen auf CPUs, wenn keine GPU verfügbar ist, wenngleich mit reduzierter Inferenzgeschwindigkeit. Dies erweitert den Nutzerkreis erheblich, da keine spezialisierte Hardware vorausgesetzt wird.
+
+3. **Dynamische Ressourcenverwaltung**: Intelligente Verwaltung des verfügbaren Arbeitsspeichers und Auslagerung nicht aktiv genutzter Modellteile zur Optimierung der Ressourcennutzung.
+
+**Integration in die Plattform**
+
+In der vorliegenden Plattform wird Ollama sowohl als lokale Installation auf dem System des Nutzers als auch als containerisierte Lösung innerhalb der Docker-Umgebung unterstützt. Dies bietet Nutzern Flexibilität in der Deployment-Strategie und ermöglicht den Einsatz von LLMs ohne Abhängigkeit von Cloud-basierten API-Services, was Datenschutz- und Kostenvorteile mit sich bringt.
+
+Die Wahl des spezifischen LLM-Modells liegt beim Nutzer und sollte basierend auf den verfügbaren Hardwareressourcen getroffen werden: Kleinere Modelle (z.B. 7 Milliarden Parameter) laufen auf Standard-Hardware mit 16-32 GB RAM, während größere Modelle (13+ Milliarden Parameter) entsprechend leistungsfähigere Systeme erfordern.
+
+#### 2.3.3 LLMs im Finanzkontext
+
+Die Anwendung von LLMs für Finanzanalysen ist ein aufstrebendes Forschungsgebiet. Im Gegensatz zu traditionellen Machine Learning-Modellen, die primär numerische Features verarbeiten, können LLMs sowohl quantitative Daten als auch qualitative Textinformationen integrieren. Dies ermöglicht beispielsweise die Berücksichtigung von Earnings Call Transcripts, Nachrichtenartikeln oder Unternehmensberichten in der Analyse (Wu et al., 2023).
+
+Ein weiterer Vorteil liegt in der Few-Shot-Lernfähigkeit: LLMs können durch geeignete Prompt-Gestaltung (Prompt Engineering) auf spezifische Analyseaufgaben ausgerichtet werden, ohne dass ein vollständiges Retraining notwendig ist. Dies senkt die Einstiegshürde für Nutzer ohne tiefgreifende Machine Learning-Kenntnisse erheblich.
+
+Die vorliegende Plattform nutzt diese Eigenschaften, um Nutzern einen direkten Vergleich zwischen quantitativen ML-Ansätzen und qualitativ-angereicherten LLM-Analysen zu ermöglichen. Dabei bleibt zu beachten, dass LLMs keine deterministischen Prognosen liefern, sondern probabilistische Ausgaben generieren, deren Interpretation Domänenwissen erfordert.
+
 
 
 ## Literatur:
@@ -339,4 +389,13 @@ Die Auswahl der geeigneten Metrik hängt von der spezifischen Aufgabenstellung u
 - Breiman, L., Friedman, J., Stone, C. J., & Olshen, R. A. (1984). Classification and Regression Trees. CRC press.
 - Atsalakis, G. S., & Valavanis, K. P. (2009). Surveying stock market forecasting techniques. Expert Systems with Applications, 36(3), 5932-5944.
 - Sokolova, M., & Lapalme, G. (2009). A systematic analysis of performance measures for classification tasks. Information Processing & Management, 45(4), 427-437.
-
+- Vaswani, A., et al. (2017). Attention is all you need. Advances in Neural Information Processing Systems, 30.
+- Brown, T. B., et al. (2020). Language models are few-shot learners. Advances in Neural Information Processing Systems, 33, 1877-1901.
+- Wei, J., et al. (2022). Chain-of-thought prompting elicits reasoning in large language models. Advances in Neural Information Processing Systems, 35.
+- Devlin, J., et al. (2019). BERT: Pre-training of deep bidirectional transformers for language understanding. NAACL-HLT.
+- LeCun, Y., et al. (1998). Gradient-based learning applied to document recognition. Proceedings of the IEEE, 86(11), 2278-2324.
+- Goodfellow, I., et al. (2014). Generative adversarial nets. Advances in Neural Information Processing Systems, 27.
+- Ho, J., et al. (2020). Denoising diffusion probabilistic models. Advances in Neural Information Processing Systems, 33.
+- Dettmers, T., et al. (2022). LLM.int8(): 8-bit matrix multiplication for transformers at scale. Advances in Neural Information Processing Systems, 35.
+- Wu, S., et al. (2023). BloombergGPT: A Large Language Model for Finance. arXiv preprint arXiv:2303.17564.
+- Ollama (2024). Ollama Documentation. https://ollama.ai/
