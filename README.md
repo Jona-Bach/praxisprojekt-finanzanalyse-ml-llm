@@ -1905,6 +1905,7 @@ Aus Anwendersicht ist FinSight als Multi-Page-Dashboard konzipiert. Der Einstieg
 Die Startseite präsentiert sich mit einem prominenten FinSight-Logo und zwei zentralen Tabs: **Welcome** und **Setup**.
 
 ![Startseite - Welcome](rdme_assets/start.png)
+
 *Abbildung 5-1: Startseite mit Welcome- und Setup-Tabs*
 
 Beim ersten Start wird der Nutzer über folgende Reihenfolge geführt:
@@ -1927,6 +1928,7 @@ Dieser Flow reduziert Einstiegsbarrieren erheblich und adressiert typische Probl
 Die Anwendung nutzt Streamlits Sidebar-Navigation für die Hauptnavigation zwischen den funktionalen Bereichen.
 
 ![Navigation - Seitenübersicht](rdme_assets/pages.png)
+
 *Abbildung 5-2: Sidebar-Navigation mit allen Hauptseiten*
 
 Die UI ist in funktionale Bereiche aufgeteilt, die den Arbeitsprozess abbilden: **Start → Data → Machine Learning → LLM Playground → Assistant → Settings**.
@@ -2016,11 +2018,12 @@ Die Sidebar fungiert als systemnahes Kontrollpanel und bündelt alle datenreleva
 **Download-Funktion:**
 - "Search Stock" Input-Feld für Symbol-Suche
 - "Download Ticker Data" Button für neue Symbole
-- Lädt Daten von Yahoo Finance herunter und persistiert sie
+- Lädt Daten von Yahoo Finance und Alphavamtage herunter und persistiert sie
 
 **Upload-Funktionalität:**
 
 ![Data Sidebar - Upload-Bereich](rdme_assets/data_sidebar2.png)
+
 *Abbildung 5-4: Upload-Bereich für nutzereigene Datensätze*
 
 Der Upload-Bereich ("Create your own Database") ermöglicht:
@@ -2069,7 +2072,7 @@ Unterer Bereich:
 
 **Schritt 3: Kennzahlen-Dashboard**
 
-![Data Analysis - Kennzahlen](rdme_assets/data_analysis2.png)
+
 *Abbildung 5-6: Finanzkennzahlen-Dashboard mit Market Cap, PE-Ratio, ROE, etc.*
 
 Das Kennzahlen-Dashboard zeigt in zwei Reihen à drei Metriken:

@@ -163,7 +163,27 @@ def format_date_string(date_str):
 
     return dt.strftime("%d %b %Y")  # z. B. "21 Jan 2025"
 
+def format_pe(value, decimals=2):
+    if value is None:
+        return "—"
 
+    # String sauber parsen (Deutsch/Englisch)
+    if isinstance(value, str):
+        s = value.strip()
+        if "," in s and "." in s:          # z.B. "1.234,56"
+            s = s.replace(".", "").replace(",", ".")
+        elif "," in s:                      # z.B. "24,31"
+            s = s.replace(",", ".")         # -> "24.31"
+        try:
+            value = float(s)
+        except:
+            return "—"
+
+    # Optional: negative PE ausblenden
+    # if value <= 0:
+    #     return "—"
+
+    return f"{value:.{decimals}f}x"
 symbols_yf_history = get_symbols_from_table(database_path=database_path_yf, table_name="yf_price_history")
 symbols_yf_company_info = get_symbols_from_table(database_path=database_path_yf, table_name="yf_company_info")
 symbols_av_processed = get_unique_symbols_from_table(table_name="alphavantage_processed_kpi")
@@ -380,7 +400,7 @@ with tab1:
         market_cap_str = up_to_date_av_entries.sort_values("timestamp", ascending=False)["market_capitalization"].iloc[0]
         market_cap = format_number(market_cap_str)
         pre_ratio_str = up_to_date_av_entries.sort_values("timestamp", ascending=False)["pe_ratio"].iloc[0]
-        pe_ratio = format_number(pre_ratio_str)
+        pe_ratio = format_pe(pre_ratio_str)
         price_to_book_ratio_str = up_to_date_av_entries.sort_values("timestamp", ascending=False)["price_to_book_ratio"].iloc[0]
         ptbr = format_number(price_to_book_ratio_str)
         
