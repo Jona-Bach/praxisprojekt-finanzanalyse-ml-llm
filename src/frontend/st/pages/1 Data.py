@@ -219,11 +219,12 @@ def format_pe(value, decimals=2):
 
     return f"{value:.{decimals}f}x"
 symbols_yf_history = get_symbols_from_table(database_path=database_path_yf, table_name="yf_price_history")
+symbols_yf_raw = get_symbols_from_table(database_path=database_path_yf, table_name="yf_pricing_raw")
 symbols_yf_company_info = get_symbols_from_table(database_path=database_path_yf, table_name="yf_company_info")
 symbols_av_processed = get_unique_symbols_from_table(table_name="alphavantage_processed_kpi")
 
 combined_symbols = list(
-set(symbols_yf_history + symbols_yf_company_info + symbols_av_processed)
+set(symbols_yf_history + symbols_yf_company_info + symbols_av_processed + symbols_yf_raw)
 )
 
 combined_symbols = sorted(combined_symbols)
