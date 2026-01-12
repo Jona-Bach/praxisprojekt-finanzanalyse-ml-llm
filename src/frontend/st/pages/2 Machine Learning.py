@@ -1,11 +1,12 @@
 import os
 from datetime import datetime
+
 import streamlit as st
 from backend.data_processing.alphavantage_processed import get_processed_table
 import numpy as np
 import pandas as pd
 from backend.database.users_database import get_user_table, list_user_tables
-from backend.database.db_functions import get_all_yf_price_history, get_yf_pricing_raw
+from backend.database.db_functions import get_all_yf_price_history, get_yf_pricing_raw, get_config_dict
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import (
@@ -34,13 +35,23 @@ ALPHA_PRICING_TABLE = "alphavantage_pricing_processed"
 ALPHA_KPI_TABLE = "alphavantage_processed_kpi"
 
 # Trainings-Grenzen
-MAX_ROWS_FOR_MODEL = 20000
-MIN_ROWS_FOR_MODEL = 50  # Minimum an Zeilen für sinnvolles Training
+
+max_rows_config = get_config_dict("ml_max_rows_for_model")
+if max_rows_config is not None:
+    MAX_ROWS_FOR_MODEL = int(max_rows_config["Value"])
+else:
+    MAX_ROWS_FOR_MODEL = 20000
+
+min_rows_config = get_config_dict("ml_min_rows_for_model")
+if min_rows_config is not None:
+    MIN_ROWS_FOR_MODEL = int(min_rows_config["Value"])
+else:
+    MIN_ROWS_FOR_MODEL = 50  # Minimum an Zeilen für sinnvolles Training
 
 # __________________________Header____________________________
 
 st.set_page_config(
-    page_title="Machine Learning Playground",
+    page_title="ML Studio",
     page_icon="🧠",
     layout="wide"
 )
@@ -133,20 +144,20 @@ def load_data_from_source(
     Lädt Daten je nach ausgewählter Quelle mit deinen bestehenden Funktionen
     und konvertiert anschließend String-Spalten bestmöglich in numerische / Datums-Typen.
     """
-    if source == "YF_PRICE_HISTORY (alle Symbole)":
+    if source == "Price History":
         df = get_all_yf_price_history()
 
-    elif source == "YF_PRICING_RAW (Symbol)":
+    elif source == "Single Stock Price":
         if not symbol:
             return pd.DataFrame()
         df = get_yf_pricing_raw(symbol)
 
-    elif source == "Alphavantage (einzeln)":
+    elif source == "Alphavantage":
         if not table_name:
             return pd.DataFrame()
         df = get_processed_table(table_name)
 
-    elif source == "Alphavantage (Pricing + KPI kombiniert)":
+    elif source == "Alphavantage (Combined)":
         df_price = get_processed_table(ALPHA_PRICING_TABLE)
         df_kpi = get_processed_table(ALPHA_KPI_TABLE)
 
@@ -173,7 +184,7 @@ def load_data_from_source(
             suffixes=("_price", "_kpi"),
         )
 
-    elif source == "User-Tabelle (users_database)":
+    elif source == "User Tables":
         if not table_name:
             return pd.DataFrame()
         df = get_user_table(table_name)
@@ -434,6 +445,7 @@ def save_model_bundle(
     n_lags: int | None = None,
     base_col: str | None = None,
     encoded_feature_names: list[str] | None = None,
+    feature_dtypes: dict | None = None,
 ):
     """
     Speichert Modell + Metadaten als .pkl in MODEL_DIR.
@@ -459,6 +471,7 @@ def save_model_bundle(
         "n_lags": n_lags,
         "lag_base_col": base_col,
         "encoded_feature_names": encoded_feature_names,
+        "feature_dtypes": feature_dtypes,
         "saved_at": ts_str,
     }
 
@@ -553,8 +566,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("🧠 Machine Learning Playground")
-st.text("Baue schnell eigene Modelle auf Basis deiner Finanz- & User-Daten. Wähle Algorithmus, Datenquelle, Features & Target – der Playground übernimmt den Rest.")
+st.title("🧠 ML-Studio")
+st.text("Baue schnell eigene Modelle auf Basis deiner Finanz- & User-Daten. Wähle Algorithmus, Datenquelle, Features & Target – das ML Studio übernimmt den Rest.")
 
 st.divider()
 
@@ -578,35 +591,35 @@ with st.sidebar:
         "Datenquelle",
         [
             "No Table selected",
-            "YF_PRICE_HISTORY (alle Symbole)",
-            "YF_PRICING_RAW (Symbol)",
-            "Alphavantage (einzeln)",
-            "Alphavantage (Pricing + KPI kombiniert)",
-            "User-Tabelle (users_database)",
+            "Price History",
+            "Single Stock Price",
+            "Alphavantage",
+            "Alphavantage (Combined)",
+            "User Tables",
         ]
     )
 
     symbol = None
     table_name = None
 
-    if data_source == "YF_PRICING_RAW (Symbol)":
+    if data_source == "Single Stock Price":
         symbol = st.text_input("Symbol (z.B. AAPL, MSFT)", value="AAPL")
 
     elif data_source == "No Table selected":
         st.info("Choose Table")
 
-    elif data_source == "Alphavantage (einzeln)":
+    elif data_source == "Alphavantage":
         table_name = st.selectbox(
             "Alphavantage-Tabelle",
             ALPHAVANTAGE_TABLES
         )
 
-    elif data_source == "User-Tabelle (users_database)":
+    elif data_source == "User Tables":
         user_tables = list_user_tables()
         if user_tables:
-            table_name = st.selectbox("User-Tabelle auswählen", user_tables)
+            table_name = st.selectbox("Choose User Table", user_tables)
         else:
-            st.warning("Keine Tabellen in users_database gefunden.")
+            st.warning("No Table found in Database")
             table_name = None
 
     st.markdown("---")
@@ -649,7 +662,7 @@ with st.sidebar:
 
 # --------------------------- Tabs ---------------------------
 
-tab1, tab2 = st.tabs(["🔬 Playground", "📁 Gespeicherte Modelle"])
+tab1, tab2 = st.tabs(["🔬 ML Studio", "📁 Gespeicherte Modelle"])
 
 # --------------------------- TAB 1: Training ---------------------------
 
@@ -673,9 +686,9 @@ with tab1:
             time_guess = detect_time_column(df.copy())
             st.metric("Zeitspalte erkannt", time_guess if time_guess else "Keine")
 
-        if data_source == "Alphavantage (einzeln)":
+        if data_source == "Alphavantage":
             st.header(table_name)
-        elif data_source == "User-Tabelle (users_database)":
+        elif data_source == "User Tables":
             st.header(table_name)
         else:
             st.header(data_source)
@@ -924,8 +937,12 @@ with tab1:
 
                         # ---------------------- Modell speichern ----------------------
 
+                        feature_dtypes = (
+                            df_for_model[active_feature_cols]
+                            .dtypes.astype(str)
+                            .to_dict()
+                        )
 
-                        
                         save_path = save_model_bundle(
                             model=model,
                             algo_name=algo_name_for_save,
@@ -939,6 +956,7 @@ with tab1:
                             n_lags=n_lags,
                             base_col=target_col if use_time_series else None,
                             encoded_feature_names=encoded_feature_names,
+                            feature_dtypes=feature_dtypes,
                         )
 
                         st.success(f"Modell gespeichert unter: `{save_path}`")
@@ -1034,9 +1052,19 @@ with tab2:
                         st.write("• Lag-Basis-Spalte:", bundle.get("lag_base_col"))
 
                     feature_cols_b = bundle.get("feature_cols", []) or []
+                    feature_dtypes_b = bundle.get("feature_dtypes", {}) or {}
+
                     st.write(f"**Features (X) – {len(feature_cols_b)} Spalten:**")
                     if feature_cols_b:
-                        st.code("\n".join(map(str, feature_cols_b)), language="text")
+                        lines = []
+                        for col in feature_cols_b:
+                            dtype = feature_dtypes_b.get(col, "?")
+                            # "Länge": für Floats sagen wir explizit 3 Nachkommastellen
+                            if isinstance(dtype, str) and ("float" in dtype or "double" in dtype):
+                                lines.append(f"{col}  ({dtype}, 3 Nachkommastellen)")
+                            else:
+                                lines.append(f"{col}  ({dtype})")
+                        st.code("\n".join(lines), language="text")
                     else:
                         st.write("_Keine Feature-Liste im Bundle gefunden._")
 

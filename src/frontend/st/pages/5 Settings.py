@@ -8,6 +8,7 @@ from backend.data_model import TICKERS
 from backend.scheduler import load_initial_data
 from backend.database.users_database import list_user_tables
 from backend.database.database_utils import delete_any_table
+import os
 
 #__________________________Header____________________________
 
@@ -18,6 +19,8 @@ st.set_page_config(page_title="Settings", page_icon="⚙️")
 BASE_DIR = Path(__file__).resolve().parent.parent
 st.session_state["BASE_DIR"] = BASE_DIR
 
+MODEL_DIR_PKL = "saved_models"
+os.makedirs(MODEL_DIR_PKL, exist_ok=True)
 
 # Pfad zur PNG
 img_path_fsbar = BASE_DIR / "assets" / "finsightbar.png"
@@ -79,17 +82,6 @@ with st.expander("Global Settings"):
             except Exception as e:
                 st.error(e)
 
-    st.divider()
-    st.header("Alphavantage Key:")
-
-    av_key = st.text_input("Alphavantage Key (will not be stored permanently!)")
-
-    if st.button("Set Alphavantage Key!"):
-        if av_key:  # nur setzen, wenn wirklich was eingegeben wurde
-            st.session_state["alphavantage_key"] = av_key
-            st.success("Key stored")
-        else:
-            st.warning("Bitte gib zuerst einen Key ein.")
 
 
 
@@ -245,6 +237,141 @@ with st.expander("Data Settings"):
                     st.error(f"Couln't delete the config! {e} ")
                 st.success("Date Config Reseted!")
 
+
+
+
+
+with st.expander("Machine Learning Settings"):
+    st.header("Machine Learning Settings:")
+
+    try:
+        model_files = sorted(
+            [f for f in os.listdir(MODEL_DIR_PKL) if f.endswith(".pkl")]
+        )
+    except FileNotFoundError:
+        model_files = []
+
+    if not model_files:
+        st.info("Es wurden noch keine Modelle in `saved_models` gespeichert.")
+    else:
+        st.write("Folgende Modelle sind aktuell gespeichert:")
+
+        for fname in model_files:
+            path = os.path.join(MODEL_DIR_PKL, fname)
+
+            # Dateiinfos (optional)
+            try:
+                size_kb = os.path.getsize(path) / 1024
+                mtime = os.path.getmtime(path)
+                from datetime import datetime
+                saved_at = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                size_kb = None
+                saved_at = "-"
+
+            col_name, col_meta, col_del = st.columns([4, 3, 1])
+
+            with col_name:
+                st.markdown(f"**{fname}**")
+
+            with col_meta:
+                meta_text = []
+                if size_kb is not None:
+                    meta_text.append(f"{size_kb:.1f} KB")
+                if saved_at != "-":
+                    meta_text.append(f"gespeichert am {saved_at}")
+                if meta_text:
+                    st.caption(" • ".join(meta_text))
+
+            with col_del:
+                if st.button("🗑️ Löschen", key=f"del_{fname}"):
+                    try:
+                        os.remove(path)
+                        st.success(f"`{fname}` wurde gelöscht.")
+                        # Seite neu laden, damit die Liste aktuell ist
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Konnte `{fname}` nicht löschen: {e}")
+        
+    st.divider()
+    def render_ml_row_settings():
+            st.subheader("Machine Learning – Zeilen-Limits")
+
+            st.caption("Hier kannst du minimale und maximale Zeilenanzahl für das ML-Training definieren.")
+
+            # Aktuell gespeicherte Werte laden (falls vorhanden)
+            min_cfg = get_config_dict("ml_min_rows_for_model")
+            max_cfg = get_config_dict("ml_max_rows_for_model")
+
+            if min_cfg and "Value" in min_cfg:
+                current_min = int(min_cfg["Value"])
+            else:
+                current_min = 50  # Default wie im Playground
+
+            if max_cfg and "Value" in max_cfg:
+                current_max = int(max_cfg["Value"])
+            else:
+                current_max = 20000  # Default wie im Playground
+
+            st.write(f"Aktueller Minimalwert: **{current_min}** Zeilen")
+            st.write(f"Aktueller Maximalwert: **{current_max}** Zeilen")
+
+            st.markdown("---")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                min_rows_input = st.number_input(
+                    "Neue minimale Zeilenanzahl für ML",
+                    min_value=1,
+                    max_value=1_000_000,
+                    value=current_min,
+                    step=10,
+                    help="Unterhalb dieser Zeilenanzahl wird kein Modell trainiert."
+                )
+
+            with col2:
+                max_rows_input = st.number_input(
+                    "Neue maximale Trainingszeilen",
+                    min_value=min_rows_input,
+                    max_value=5_000_000,
+                    value=current_max,
+                    step=100,
+                    help="Oberhalb dieser Zeilenanzahl werden die Daten gekappt."
+                )
+
+            st.markdown("---")
+            c1, c2 = st.columns(2)
+
+            with c1:
+                if st.button("💾 ML-Zeilen-Limits speichern"):
+                    # Alte Configs löschen (falls vorhanden)
+                    delete_system_config("ml_min_rows_for_model")
+                    delete_system_config("ml_max_rows_for_model")
+
+                    # Neue Werte speichern
+                    add_system_config("ml_min_rows_for_model", value=str(min_rows_input), tag=False)
+                    add_system_config("ml_max_rows_for_model", value=str(max_rows_input), tag=False)
+
+                    st.success(
+                        f"Neue Limits gespeichert: min = {min_rows_input} Zeilen, "
+                        f"max = {max_rows_input} Zeilen."
+                    )
+
+            with c2:
+                if st.button("🔄 ML-Zeilen-Limits zurücksetzen"):
+                    try:
+                        delete_system_config("ml_min_rows_for_model")
+                    except Exception as e:
+                        st.warning(f"Konnte 'ml_min_rows_for_model' nicht löschen: {e}")
+
+                    try:
+                        delete_system_config("ml_max_rows_for_model")
+                    except Exception as e:
+                        st.warning(f"Konnte 'ml_max_rows_for_model' nicht löschen: {e}")
+
+                    st.success("ML-Zeilen-Limits wurden auf Defaults zurückgesetzt (50 / 20000).")
+    render_ml_row_settings()
 
 
 
