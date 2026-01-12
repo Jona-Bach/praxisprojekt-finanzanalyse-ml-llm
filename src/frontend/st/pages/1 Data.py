@@ -424,13 +424,13 @@ with tab1:
 
         except Exception:
             # Daten laden
-            with st.spinner("Loading current data.."):
-                load_data([ticker_to_analyze])
-
+            #with st.spinner("Loading current data.."):
+                #load_data([ticker_to_analyze])
+                st.warning("Please download data from the Sidebar oder the Settings menu!")
                 # Erneut abrufen
-                up_to_date_av_entries = get_processed_entries_by_symbol(
-                    "alphavantage_processed_kpi", ticker_to_analyze
-                )
+                #up_to_date_av_entries = get_processed_entries_by_symbol(
+                #    "alphavantage_processed_kpi", ticker_to_analyze
+                #)
         try:
             data_updated_time = up_to_date_av_entries.sort_values("timestamp", ascending=False)["timestamp"].iloc[0]
 

@@ -107,7 +107,7 @@ def download_yf_pricing_raw_newest(tickers_to_download :list, interval_p : str =
 def download_price_history(
     tickers_to_download: list,
     start: str = "1995-01-01",
-    end: str = "2020-01-01",
+    end: str = "2025-01-01",
     batch_size: int = 25,
     sleep_between_batches: int = 30,
 ):
