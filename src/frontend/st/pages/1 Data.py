@@ -6,7 +6,7 @@ from datetime import datetime
 import plotly.graph_objects as go
 from backend.data_model import TICKERS
 from backend.scheduler import load_data, load_initial_data
-from backend.database.db_functions import get_table, get_table_names, get_symbols_from_table, get_unique_table, get_yf_company_info, get_yf_price_history, get_yf_pricing_raw, get_config_dict
+from backend.database.db_functions import get_table, get_table_names, get_symbols_from_table, get_unique_table, get_yf_company_info, get_yf_price_history, get_yf_pricing_raw, get_config_dict, get_all_yf_price_history
 from backend.data_processing.alphavantage_processed import get_processed_table, process_alphavantage_raw_db, get_processed_entries_by_symbol, get_unique_symbols_from_table
 from backend.database.users_database import import_file_as_table, get_user_table, list_user_tables
 from backend.api_services.yf_connect import download_yf_company_info, download_yf_pricing_raw_newest, download_yf_pricing_raw_timeperiod
@@ -692,9 +692,17 @@ with tab2:
 
     st.divider()
 
+    st.subheader("Yahoo Finance Data")
+    try:
+        yf_table = get_all_yf_price_history()
+        st.dataframe(yf_table, hide_index=True, width="stretch")
+    except Exception as e:
+        st.error(f"Could not load yahoo finance data: {e}")
+
     # ---------------------------------------------------------------
     # SECTION 3: User-created database tables
     # ---------------------------------------------------------------
+    st.divider()
     st.subheader("User-created Database Tables")
     st.markdown("These tables come from your uploaded CSV or Excel files.")
 
