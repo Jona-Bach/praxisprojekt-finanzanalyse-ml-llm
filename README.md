@@ -3357,7 +3357,7 @@ Diese Roadmap verdeutlicht, dass die Anwendung ein solides Fundament bietet, das
 
 ---
 
-## 6.4 Fazit der Diskussion
+## 6.4 Fazit der Diskussion und Zusammenfassung
 
 Das Praxisprojekt „FinSight" erreicht seine Kernziele als experimentelle Plattform für Finanzanalyse, Machine Learning und LLM-Integration. Die Anwendung demonstriert erfolgreich die Integration heterogener Technologien in einem kohärenten Dashboard-Konzept und bietet sowohl Einsteigern als auch fortgeschrittenen Nutzern einen funktionalen Werkzeugkasten.
 
