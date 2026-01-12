@@ -3,7 +3,7 @@ import random
 import pandas as pd
 import time
 from sqlalchemy.exc import IntegrityError
-from backend.database.db_functions import create_yf_pricing_entry, create_yf_price_history_entry, create_yf_company_from_info, create_yf_price_history_entry_ml
+from backend.database.db_functions import create_yf_pricing_entry, create_yf_price_history_entry, create_yf_company_from_info
 from backend.data_model import TICKERS, tickers_list_new_for_ml, last_dats
 
 stock_list = TICKERS
@@ -196,7 +196,7 @@ def download_price_history(
         # --- In DB schreiben: jede Zeile über deine Funktion ---
 
         for _, row in df_long.iterrows():
-            create_yf_price_history_entry_ml(
+            create_yf_price_history_entry(
                 symbol=row["symbol"],
                 date=row["date"],
                 open=row["open"] if pd.notna(row["open"]) else None,
