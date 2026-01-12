@@ -146,7 +146,8 @@
     - [6.2.3 LLM-Integration](#623-llm-integration)
     - [6.2.4 Performance und Skalierbarkeit](#624-performance-und-skalierbarkeit)
     - [6.2.5 Usability und Fehleranfälligkeit](#625-usability-und-fehleranfälligkeit)
-    - [6.2.6 Zusammenfassung der Threats to Validity](#626-zusammenfassung-der-threats-to-validity)
+    - [6.2.6 Relationale Datenbank vs. Dokumentenbasierte Alternativen](626-relationale-datenbank-vs.-dokumentenbasierte-alternativen)
+    - [6.2.7 Zusammenfassung der Threats to Validity](#627-zusammenfassung-der-threats-to-validity)
   - [6.3 Ausblick und Verbesserungspotenziale](#63-ausblick-und-verbesserungspotenziale)
 - [7. Fazit der Diskussion und Abschluss](#7-fazit-der-diskussion-und-abschluss)
 
@@ -3297,7 +3298,26 @@ Abgesehen vom Assistant gibt es keine kontextuelle Hilfe (z.B. Tooltips, Inline-
 
 **Implikation:** Nutzer sind auf externe Dokumentation oder Trial-and-Error angewiesen; dies erhöht die Einstiegshürde.
 
-### 6.2.6 Zusammenfassung der Threats to Validity
+### 6.2.6 Relationale Datenbank vs. Dokumentenbasierte Alternativen
+
+Die Entscheidung für SQLite als relationale Datenbank brachte zwar den Vorteil der einfachen Integration ohne separate Infrastruktur, stellte jedoch auch eine potenzielle Limitierung dar. Für die primär strukturierten Finanzdaten (OHLCV-Zeitreihen, Unternehmenskennzahlen) war das relationale Schema grundsätzlich geeignet. Allerdings hätten **dokumentenbasierte Alternativen** wie MongoDB oder spezialisierte Zeitreihen-Datenbanken wie InfluxDB oder TimescaleDB gewisse Vorteile bieten können:
+
+**Vorteile dokumentenbasierter Systeme:**
+- **Flexibilität bei heterogenen Datenstrukturen**: Alpha Vantage-KPIs enthalten Spalten mit überwiegend NULL-Werten, die in JSON-Dokumenten effizienter als optionale Felder gespeichert werden könnten
+- **Schema-Evolution ohne Migrationen**: Änderungen in API-Responses erfordern keine ALTER-TABLE-Operationen
+- **Native JSON-Verarbeitung**: Direkte Speicherung von API-Responses ohne Mapping-Logik
+
+**Vorteile von Elasticsearch:**
+- **Volltextsuche**: Analyse von Unternehmensbeschreibungen oder LLM-generierten Texten
+- **Analytische Abfragen**: Aggregationen über große Datensätze mit besserer Performance
+- **Skalierbarkeit**: Horizontales Scaling bei wachsenden Datenmengen
+
+**Rationale für SQLite:**
+Für den Prototyp-Charakter und Einzelnutzer-Fokus war SQLite angemessen. Die Limitation auf mehrere Millionen Datensätze ist für den definierten Scope ausreichend. Bei einer produktiven Multi-User-Plattform mit erweiterten Analyse-Anforderungen wäre eine Migration zu PostgreSQL (mit JSONB-Unterstützung für flexible Felder) oder eine Hybrid-Architektur (PostgreSQL für strukturierte Daten, Elasticsearch für Volltextsuche und Aggregationen) zu empfehlen.
+
+Die gewählte Lösung repräsentiert somit einen pragmatischen Trade-off zwischen Implementierungsaufwand und funktionaler Angemessenheit für die Projektziele.
+
+### 6.2.7 Zusammenfassung der Threats to Validity
 
 Die identifizierten Limitationen lassen sich wie folgt priorisieren:
 
@@ -3320,8 +3340,10 @@ Die identifizierten Limitationen lassen sich wie folgt priorisieren:
 - Keine historische Speicherung von LLM-Analysen (Nice-to-have)
 - Begrenzte Fehlermeldungen (UX-Verbesserung möglich)
 - Sprachabhängigkeit (durch Prompt-Anpassung adressierbar)
+- Wahl der Datenbank
 
 Diese Priorisierung zeigt, dass die kritischsten Limitationen methodischer Natur sind (ML-Validierung, LLM-Verlässlichkeit) und nicht primär technischer Art. Dies unterstreicht den experimentellen Charakter der Anwendung: Sie ist geeignet für Exploration und Prototyping, erfordert aber kritische Interpretation der Ergebnisse.
+
 
 ---
 
