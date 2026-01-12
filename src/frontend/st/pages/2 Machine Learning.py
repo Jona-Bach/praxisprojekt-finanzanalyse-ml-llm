@@ -121,7 +121,7 @@ def auto_convert_numeric_and_datetime(df: pd.DataFrame) -> pd.DataFrame:
 
         # Potenzielle Zeit-/Datums-Spalten erkennen
         if any(k in col_lower for k in ["date", "time", "timestamp"]):
-            dt = pd.to_datetime(col_series, errors="coerce", infer_datetime_format=True)
+            dt = pd.to_datetime(col_series, errors="coerce")
             if dt.notna().mean() > 0.5:
                 df[col] = dt
                 continue  # schon als Datum erkannt
@@ -224,7 +224,7 @@ def detect_time_column(df: pd.DataFrame):
         if any(k in c.lower() for k in keywords):
             # Versuch, diese Spalte in datetime zu casten
             try:
-                converted = pd.to_datetime(df[c], errors="coerce", infer_datetime_format=True)
+                converted = pd.to_datetime(df[c], errors="coerce")
                 if converted.notna().mean() > 0.5:
                     df[c] = converted
                     return c

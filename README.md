@@ -2796,7 +2796,7 @@ Dieser Abschnitt demonstriert einen vollständigen Analyse-Workflow aus der Pers
 - Er wechselt zur Machine Learning Seite und wählt in der Sidebar seine Tabelle und das gewünschte Verfahren aus
 - Durch die Vorschau kann er kontrollieren, dass er optimale Einstellungen trifft, die Features auswählen, TestSet größe und andere Einstellungen
 - der Nutzer trainiert sein Modell und sieht seine erreichte Genaugikeit durch die angezeigten Metriken
-- Er wechselt 
+- Er wechselt zu dem 
 
 # 6. Diskussion
 
