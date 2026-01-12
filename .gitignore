@@ -428,8 +428,8 @@ venv
 .env
 dist
 build
-Dockerfile*
-docker-compose*.yml
+#Dockerfile*
+#docker-compose*.yml
 *.DS_Store
 
 

@@ -1,6 +1,5 @@
 import os
 from datetime import datetime
-
 import streamlit as st
 from backend.data_processing.alphavantage_processed import get_processed_table
 import numpy as np

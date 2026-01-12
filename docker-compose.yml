@@ -1,0 +1,26 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    #ports:
+    #  - "11434:11434"           # optional: von Host aus erreichbar
+    volumes:
+      - ollama:/root/.ollama    # Modelle werden hier gespeichert
+    command: serve
+
+  app:
+    build: .
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    ports:
+      - "8501:8501"  
+    #command: ["python3", "src/backend/launch.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    command: ["python3", "src/backend/launch.py"]  
+    #command: ["streamlit","run", "testst.py", "--server.port=8501", "--server.address=0.0.0.0"]  
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  ollama:
