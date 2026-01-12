@@ -2907,7 +2907,7 @@ Durch diesen vollständigen Workflow hat der Nutzer:
 
 Die Plattform hat damit ihr Hauptziel erreicht: Sie ermöglicht Nutzern ohne tiefgreifende technische Vorkenntnisse eine strukturierte, methodisch fundierte Aktienanalyse unter Verwendung moderner Data Science- und KI-Technologien.
 
-![Beispiel-Workflow](rdme_assets/PraxisprojektWorkflow.png)
+![Beispiel-Workflow](rdme_assets/PraxisprojektWorkflowBG.png)
 *Abbildung: Abstrakte Darstellung des BeispielWorkflows*
 
 
