@@ -2761,7 +2761,7 @@ geeignet ist, jedoch bewusst **nicht** für:
 
 ---
 
-## 5.9 Beispielworkflow: Analyse einer Apple-Aktie aus Nutzersicht
+## 5.9 Beispielworkflow: Analyse einer Aktie aus Nutzersicht
 
 Dieser Abschnitt demonstriert einen vollständigen Analyse-Workflow aus der Perspektive eines konkreten Nutzers. Damit sollen die Ergebnisse dieses Projektes praktisch dargestellt werden und wie diese Applikation ihr Ziel trifft, Nutzern bei der Analyse eine Aktie zu untersützen.
 
@@ -2789,14 +2789,26 @@ Dieser Abschnitt demonstriert einen vollständigen Analyse-Workflow aus der Pers
 - Dazu läd er links in der Seitenleiste die Microsoft Aktie über "Download Ticker Data" herunter
 - Nun kann er unten in der "Compared Stock Analysis" beide Aktien miteinander vergleichen
 
-### 5.9.10 Machine Learning
+### 5.9.6 Machine Learning
 - Der Nutzer möchte nun eigene Daten die er gesammelt hat mithilfe der voreingestellten Konfigurationen analysieren
 - Links auf der Data Seite läd er dazu seine Daten als Excel hoch und wählt die option "replace" damit diese vollständig reingeladen werden
 - Unter dem Data Settings Tab kontrolliert er anschließened ob die Daten vollständig hochgeladeb wurden
 - Er wechselt zur Machine Learning Seite und wählt in der Sidebar seine Tabelle und das gewünschte Verfahren aus
 - Durch die Vorschau kann er kontrollieren, dass er optimale Einstellungen trifft, die Features auswählen, TestSet größe und andere Einstellungen
 - der Nutzer trainiert sein Modell und sieht seine erreichte Genaugikeit durch die angezeigten Metriken
-- Er wechselt zu dem 
+- Er wechselt zu dem "Saved models" Tab und schaut sich sein gespeichertes Modell an und läd es sich runter um damit selber weiteruuarbeiten
+
+### 5.9.7 LLM Analyse
+- Der Nutzer wechselt zu der "LLM Playground" Seite 
+- Er wählt sich Links seine Daten aus der Sidebar aus und fügt einen eigenen prompt hinzu der noch politische Aspekte hineinbringt
+- Er wählt andere Einstellungen wie das Verfahren dass das Llm übernehmen soll und wieviele Zeilen Seiner Daten es dem Modell gibt und generiert den prompt
+- Er sieht sich den insgesamte erstellten Prompt an und schaut sich anschlließebd die Ausgabe zu seinen Daten an
+
+### 5.9.8 Hilfestellung
+- Der Nutzer fragt sich jetzt, was die Zeitreihenanalyse einstellung bei der ML Seite bedeutet und wechselt zur Assistenten Seite
+- Der Nutzer stellt fest, dass er in den Settings unter Assistant Settings noch die Source einstellen muss
+- Danach stellt er dem Assistenten die Frage warum man eine Zeitreihen Analyse machen kann und was das ist.
+- Mit den gewonnen erkenntnissen kann der Nutzer weiterarbeiten
 
 # 6. Diskussion
 
