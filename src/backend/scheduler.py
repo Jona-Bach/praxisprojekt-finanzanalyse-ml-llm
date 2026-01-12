@@ -1,11 +1,21 @@
 import time
 from datetime import datetime
 from src.backend.api_services.av_connect import fetch_alphavantage_raw, fetch_alphavantage_price_today
+from src.backend.api_services.yf_connect import download_yf_company_info, download_yf_pricing_raw_timeperiod
 from src.backend.data_model import TICKERS
 from backend.database.db_functions import get_list_system_config
 from backend.data_processing.alphavantage_processed import process_alphavantage_raw_db
+from backend.database.db_functions import get_config_dict
 import streamlit as st
 now = datetime.now().replace(microsecond=0)
+
+
+selected_date_cfg = get_config_dict("selected_date_for_ticker_download")
+
+if selected_date_cfg and "Value" in selected_date_cfg:
+    timeperiod_for_download = selected_date_cfg["Value"]
+else:
+    timeperiod_for_download = "2020-01-01"
 
 
 def load_data(data: list):
@@ -52,6 +62,9 @@ def load_initial_data():
             status_raw_data.write(f"Fetched Raw Data for: {ticker}")
             fetch_alphavantage_price_today(ticker)
             status_pricing_data.write(f"Fetched Pricing Data for: {ticker}")
+            download_yf_company_info(tickers=[ticker])
+            download_yf_pricing_raw_timeperiod(tickers_to_download=[ticker], startdate=timeperiod_for_download)
+            status_pricing_data.write(f"Fetched Data for: {ticker}")
             print(f"{ticker} added to Database!")
             st.success(f"{ticker} was added successfully to the Database!")
         except Exception as e:
