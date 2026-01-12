@@ -146,7 +146,7 @@
     - [6.2.3 LLM-Integration](#623-llm-integration)
     - [6.2.4 Performance und Skalierbarkeit](#624-performance-und-skalierbarkeit)
     - [6.2.5 Usability und Fehleranfälligkeit](#625-usability-und-fehleranfälligkeit)
-    - [6.2.6 Relationale Datenbank vs. Dokumentenbasierte Alternativen](#626-relationale-datenbank-vs.-dokumentenbasierte-alternativen)
+    - [6.2.6 Relationale Datenbank vs. Dokumentenbasierte Alternativen](#626-relationale-datenbank-vs-dokumentenbasierte-alternativen)
     - [6.2.7 Zusammenfassung der Threats to Validity](#627-zusammenfassung-der-threats-to-validity)
   - [6.3 Ausblick und Verbesserungspotenziale](#63-ausblick-und-verbesserungspotenziale)
 - [7. Fazit der Diskussion und Abschluss](#7-fazit-der-diskussion-und-abschluss)
