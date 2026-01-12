@@ -113,12 +113,13 @@ Welcome to **FinSight** – your comprehensive tool for comparing traditional re
    - Add custom tickers (comma-separated) in the text field
    - Click "Choose as New Initial Tickers"
 4. Click "Load initial Data" to download the selected stocks
+5. Make sure under "Analysis Settings, the timeperiod is set correctly!"
 
 ---
 
 ## 📊 **First Steps After Setup**
 
-### **Step 1: Load Data**
+### **Step 1: Update Data**
 1. Navigate to **Data** page
 2. Ensure your Alpha Vantage key is set (Settings → Global Settings)
 3. Click "Update All Data" in the sidebar

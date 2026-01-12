@@ -2776,7 +2776,27 @@ Dieser Abschnitt demonstriert einen vollständigen Analyse-Workflow aus der Pers
 
 ### 5.9.3 Daten Beschaffung
 - Der Nutzer wechselt zu den Data-Settings und ändert die Initiale liste der Ticker so ab, dass nur Apple geladen wird (Da er nur die braucht)
-- Mit dem Knopf "Load Data" läd er sich die neue Liste 
+- Er Überprüft unter Anaylsis Settings das der Zeitraum für den Download seiner Ticker stimmt.
+- Mit dem Knopf "Load Data" läd er sich die neue Aktien Daten in seine Datenbank
+
+### 5.9.4 Grundlegende Analyse
+- Der Nutzer wechselt zur "Data" Page unter den Analysis Tab
+- im Dropdown sieht er nun seine Apple Aktie
+- Er Schaut sich auf der Seite die Beschreibung und Infos der Aktie an. Weiter unten findet er weitere Key Metriken und einen Graf der Close Aktie von Apple mit dem er die History also die Entwicklung des Preises ansehen kann
+
+### 5.9.5 Vergleichende Analyse
+- Der Nutzer will die Apple Aktie zur Microsoft Aktie vergleichen
+- Dazu läd er links in der Seitenleiste die Microsoft Aktie über "Download Ticker Data" herunter
+- Nun kann er unten in der "Compared Stock Analysis" beide Aktien miteinander vergleichen
+
+### 5.9.10 Machine Learning
+- Der Nutzer möchte nun eigene Daten die er gesammelt hat mithilfe der voreingestellten Konfigurationen analysieren
+- Links auf der Data Seite läd er dazu seine Daten als Excel hoch und wählt die option "replace" damit diese vollständig reingeladen werden
+- Unter dem Data Settings Tab kontrolliert er anschließened ob die Daten vollständig hochgeladeb wurden
+- Er wechselt zur Machine Learning Seite und wählt in der Sidebar seine Tabelle und das gewünschte Verfahren aus
+- Durch die Vorschau kann er kontrollieren, dass er optimale Einstellungen trifft, die Features auswählen, TestSet größe und andere Einstellungen
+- der Nutzer trainiert sein Modell und sieht seine erreichte Genaugikeit durch die angezeigten Metriken
+- Er wechselt 
 
 # 6. Diskussion
 
