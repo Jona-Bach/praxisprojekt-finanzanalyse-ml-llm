@@ -148,7 +148,7 @@
     - [6.2.5 Usability und Fehleranfälligkeit](#625-usability-und-fehleranfälligkeit)
     - [6.2.6 Zusammenfassung der Threats to Validity](#626-zusammenfassung-der-threats-to-validity)
   - [6.3 Ausblick und Verbesserungspotenziale](#63-ausblick-und-verbesserungspotenziale)
-- [7 Fazit der Diskussion und Abschluss](#64-fazit-der-diskussion-und-abschluss)
+- [7. Fazit der Diskussion und Abschluss](#7-fazit-der-diskussion-und-abschluss)
 
 - [Literatur](#literatur)
 
