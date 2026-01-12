@@ -26,7 +26,7 @@ symbol = initial_tickers[0]
 
 def av_request(params, sleep_before: float = ALPHAVANTAGE_BASE_SLEEP):
     """Hilfsfunktion: API-Aufruf mit bewusst langer Wartezeit."""
-    API_KEY = st.session_state.get("alphavantage_key")
+    API_KEY = st.session_state.get("alpha_vantage_key")
     params["apikey"] = API_KEY
 
     
